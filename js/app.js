@@ -97,6 +97,7 @@ async function start(s) {
     searchProducts: (q) => { const ws = q.split(' ').filter(Boolean); return S.products.filter((p) => ws.every((w) => (p._n ??= norm(p.name + ' ' + p.code)).includes(norm(w)))).slice(0, 8).map((p) => ({ id: p.id, title: p.name, meta: `${brand(p.brand).short} · ${tl(p.price)}`, thumb: img(p, 'thumb') })); },
     openProduct: (id) => openProduct(id),
   });
+  $('#alertBtn').onclick = openAlerts; alertBadge();
   banners(); route();
 }
 
@@ -155,6 +156,32 @@ async function publishFeed(text, user) {
   const bytes = new TextEncoder().encode(text); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
   const r = await fetch(api, { method: 'PUT', headers: h, body: JSON.stringify({ message: `Sina XML yüklendi (${user})`, content: btoa(bin), branch, sha }) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+
+/* ---------- Fiyat uyarıları: biz ucuzken rakip fiyat düşürüp altımıza indi ---------- */
+const alertList = () => [...(S.data.alerts ?? [])].sort((a, b) => (a.at < b.at ? 1 : -1));
+function alertBadge() {
+  const seen = localStorage.getItem('sp_alert_seen') ?? '';
+  const n = alertList().filter((a) => a.at > seen).length, el = $('#alertBadge');
+  el.hidden = !n; el.textContent = n > 99 ? '99+' : n;
+  $('#alertBtn').setAttribute('aria-label', n ? `Fiyat uyarıları, ${n} yeni` : 'Fiyat uyarıları');
+}
+function openAlerts() {
+  const list = alertList(), seen = localStorage.getItem('sp_alert_seen') ?? '';
+  let html = '', day = '';
+  for (const a of list.slice(0, 150)) {
+    if (a.date !== day) { day = a.date; html += `<div class="al-day">${dstr(day)}</div>`; }
+    const sp = S.byId.get(a.sina.id), cp = S.byId.get(a.comp.id);
+    const still = sp?.active && cp?.active && cp.price < sp.price;
+    const nowTxt = !sp?.active || !cp?.active ? '<span class="verdict eq">Ürün artık listede yok</span>' : still ? `<span class="verdict risk">Hâlâ bizden ${pct(Math.abs((cp.price / sp.price - 1) * 100)).replace('+', '')} ucuz</span>` : '<span class="verdict good">Artık altımızda değil</span>';
+    html += `<div class="al${a.at > seen ? ' new' : ''}" data-pid="${esc(a.sina.id)}" tabindex="0" role="button">${img(sp ?? { img: null }, 'thumb')}<div>
+      <div class="al-t">${esc(a.sina.name)}</div>
+      <div class="al-c">${chip(a.comp.brand)} ${esc(a.comp.name)}<br>Rakip: <s>${tl(a.comp.old)}</s> → <b>${tl(a.comp.price)}</b> · Biz: <b>${tl(a.sina.price)}</b></div>
+      <div class="al-m">${nowTxt}<span>${esc(a.spec ?? '')}</span></div></div></div>`;
+  }
+  $('#alertsBody').innerHTML = html || `<div class="empty"><b>Henüz uyarı yok</b>Rakipten ucuz olduğumuz bir üründe rakip fiyat düşürüp altımıza inerse burada görünür ve e-posta gönderilir.</div>`;
+  openLayer($('#alerts'), { focus: $('#alerts .icon-btn') });
+  if (list[0]) { localStorage.setItem('sp_alert_seen', list[0].at); alertBadge(); }
 }
 
 function banners() {
@@ -537,7 +564,7 @@ function openDrawer(title, html) {
   openLayer($('#drawer'), { focus: $('#drawer .icon-btn'), onClose: () => { S.dchart?.destroy(); S.dchart = null; } });
 }
 function closeDrawer() { closeLayer($('#drawer')); }
-document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.ev,tr.click,th.sort,.cmp-head')) { e.preventDefault(); e.target.click(); } });
+document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.ev,tr.click,th.sort,.cmp-head,.al')) { e.preventDefault(); e.target.click(); } });
 
 function openProduct(id) {
   const p = S.byId.get(id); if (!p) return;
@@ -568,7 +595,7 @@ function openSegment(key) {
     ${bs.map((b) => `<div><h3 style="margin-bottom:8px">${esc(brand(b).name)} · ${s.byBrand[b].length} ürün</h3><div class="pgrid">${[...s.byBrand[b]].sort((x, y) => x.price - y.price).slice(0, 24).map((p) => pcard(p)).join('')}</div></div>`).join('')}`);
 }
 document.addEventListener('click', (e) => {
-  const pid = e.target.closest('[data-pid]'); if (pid) { openProduct(pid.dataset.pid); return; }
+  const pid = e.target.closest('[data-pid]'); if (pid) { if (pid.closest('#alerts')) closeLayer($('#alerts')); openProduct(pid.dataset.pid); return; }
   const seg = e.target.closest('[data-seg]'); if (seg) openSegment(seg.dataset.seg);
 });
 
@@ -720,7 +747,7 @@ function route(keepScroll) {
   const render = () => { S.charts.forEach((c) => c.destroy()); S.charts = []; pages[name]($('#view')); };
   if (changed) { swapView(render); if (keepScroll !== true) scrollTo(0, 0); } else render();
 }
-addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); route(); });
+addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); closeLayer($('#alerts')); route(); });
 
 (async () => {
   const s = JSON.parse(sessionStorage.getItem('sp_s') ?? 'null');

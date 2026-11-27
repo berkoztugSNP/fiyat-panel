@@ -36,6 +36,7 @@
   <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor"/></symbol>
   <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4.5H6.5v15H14M10.5 12h10M17 8.5l3.5 3.5-3.5 3.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18zM12 10v4.5M12 17.2v.3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5.5 6.5 6.5L9 18.5"/></symbol>
 </defs></svg>
@@ -90,6 +91,7 @@
       </div>
       <div class="top-actions">
         <button class="icon-btn only-mobile" id="paletteBtnM" aria-label="Ara"><svg class="ic"><use href="#i-search"/></svg></button>
+        <button class="icon-btn alert-btn" id="alertBtn" aria-label="Fiyat uyarıları" aria-haspopup="dialog" data-tip="Fiyat uyarıları"><svg class="ic"><use href="#i-alert"/></svg><b id="alertBadge" class="badge" hidden></b></button>
         <label class="ref"><span>Referans</span><select id="refSel" aria-label="Referans marka"></select></label>
       </div>
     </header>
@@ -115,6 +117,16 @@
     <div class="grab" aria-hidden="true"></div>
     <div class="sheet-head"><h2 id="drawerTitle"></h2><button class="icon-btn" data-close aria-label="Kapat"><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div id="drawerBody" class="sheet-body"></div>
+  </div>
+</div>
+
+<!-- Fiyat uyarıları: masaüstünde açılır pencere, mobilde alttan açılan sayfa -->
+<div id="alerts" class="sheet-root pop" hidden role="dialog" aria-modal="true" aria-labelledby="alertsTitle">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="sheet-head"><div><h2 id="alertsTitle">Fiyat uyarıları</h2><div class="t-sub">Ucuz olduğumuz üründe rakip fiyat düşürüp altımıza indiğinde</div></div><button class="icon-btn" data-close aria-label="Kapat"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div id="alertsBody" class="sheet-body"></div>
   </div>
 </div>
 
