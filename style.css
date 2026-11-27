@@ -589,3 +589,5 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 
 .filters>.fx-act{display:none}
 @keyframes fxIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+.h-s.cmp{margin-top:2px;padding-top:8px;border-top:1px solid var(--hairline)} .h-s.cmp b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}

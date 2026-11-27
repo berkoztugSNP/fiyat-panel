@@ -72,12 +72,13 @@ const pages = {
       return;
     }
     const pv = (f) => (P && (S.dated || f === 'ads') ? f === 'ads' ? P.ads.total : P[f] : null);
-    view.innerHTML = `${rangeBar(`<label class="switch"><input type="checkbox" id="cmp"${Y.compare ? ' checked' : ''}>Önceki dönemle karşılaştır</label>`)}
+    const pr = C.prevRange(r), was = (f, show) => (pv(f) != null && show ? `<div class="h-s cmp">Önceki dönem: <b>${money(pv(f), 0)}</b></div>` : '');
+    view.innerHTML = `${rangeBar(`<label class="switch" title="Seçili dönem, kendisinden hemen önceki aynı uzunluktaki dönemle karşılaştırılır"><input type="checkbox" id="cmp"${Y.compare ? ' checked' : ''}>Önceki dönemle karşılaştır${Y.compare ? ` <span class="num">(${dTR(pr.from)} – ${dTR(pr.to)})</span>` : ''}</label>`)}
       ${X.orders?.rows && !S.dated ? `<div class="note warn">Sipariş tablosunda tarih sütunu bulunamadı; sipariş rakamları seçilen dönemi değil <b>tablonun tamamını</b> gösteriyor. Reklam ve giderler seçilen döneme aittir.</div>` : ''}${curWarn(series)}
       <div class="hero">
-        <div class="lead"><div class="h-l">Hesaba gelen ${delta(S.income, pv('income'))}</div><div class="h-v">${X.orders?.rows ? money(S.income, 0) : '—'}</div><div class="h-s">${X.orders?.rows ? `${num(S.orderCount)} sipariş · ortalama ${money(S.avg, 0)}${S.returnCount ? ` · ${S.returnCount} iade` : ''}` : 'Sipariş tablosu bağlı değil'}</div></div>
-        <div><div class="h-l">Reklam harcaması ${delta(S.ads.total, pv('ads'), true)}</div><div class="h-v">${series.length ? money(S.ads.total, 0) : '—'}</div><div class="h-s">${series.length ? `Google Ads ${money(S.ads.google, 0)} · Meta Ads ${money(S.ads.meta, 0)}` : 'Reklam hesapları bağlı değil'}</div></div>
-        <div><div class="h-l">Kalan</div><div class="h-v" style="color:${S.left < 0 ? 'var(--neg)' : 'inherit'}">${X.orders?.rows ? money(S.left, 0) : '—'}</div><div class="h-s">Hesaba gelen − reklam − giderler · ürün maliyeti dahil değil</div></div>
+        <div class="lead"><div class="h-l">Hesaba gelen ${delta(S.income, pv('income'))}</div><div class="h-v">${X.orders?.rows ? money(S.income, 0) : '—'}</div><div class="h-s">${X.orders?.rows ? `${num(S.orderCount)} sipariş · ortalama ${money(S.avg, 0)}${S.returnCount ? ` · ${S.returnCount} iade` : ''}` : 'Sipariş tablosu bağlı değil'}</div>${was('income', X.orders?.rows)}</div>
+        <div><div class="h-l">Reklam harcaması ${delta(S.ads.total, pv('ads'), true)}</div><div class="h-v">${series.length ? money(S.ads.total, 0) : '—'}</div><div class="h-s">${series.length ? `Google Ads ${money(S.ads.google, 0)} · Meta Ads ${money(S.ads.meta, 0)}` : 'Reklam hesapları bağlı değil'}</div>${was('ads', series.length)}</div>
+        <div><div class="h-l">Kalan ${delta(S.left, pv('left'))}</div><div class="h-v" style="color:${S.left < 0 ? 'var(--neg)' : 'inherit'}">${X.orders?.rows ? money(S.left, 0) : '—'}</div><div class="h-s">Hesaba gelen − reklam − giderler · ürün maliyeti dahil değil</div>${was('left', X.orders?.rows)}</div>
       </div>
       <div class="grid g3">
         <div class="mgroup"><h3>Siparişler</h3>${mrow('Sipariş adedi', num(S.orderCount))}${mrow('Hesaba gelen', money(S.income, 0), 'total')}${mrow('Ortalama sipariş', money(S.avg, 0))}${mrow('İade adedi', num(S.returnCount))}${mrow('İade tutarı', money(S.returnSum, 0), '', 'Hesaba gelen toplamına dahil değil')}</div>
