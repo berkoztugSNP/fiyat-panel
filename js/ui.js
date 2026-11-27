@@ -83,6 +83,32 @@ export function updateNav(name) {
 export function setBadge(n) { for (const id of ['#navBadge', '#tabBadge']) { const el = $(id); if (el) { el.hidden = !n; el.textContent = n > 99 ? '99+' : n; } } }
 
 /* ---------- Tablolar: telefonda okunabilir listeye dönüşmesi için hücre etiketleri ---------- */
+// Telefonda süzgeçler tek satıra iner: arama + "Filtreler" düğmesi; diğer alanlar dokununca iki sütun hâlinde açılır.
+// Açıklama paragrafı da "i" düğmesinin arkasına alınır. Masaüstünde hiçbir şey değişmez (düğmeler CSS ile gizlidir).
+const fxOpen = {};
+function compactFilters(root) {
+  if (!root) return;
+  for (const f of root.querySelectorAll('.card > .filters:not(.fx)')) {
+    const fields = [...f.children];
+    if (f.querySelectorAll('select').length < 2 || f.querySelector('input[type=file]') || f.closest('form')) { f.classList.add('fx', 'fx-skip'); continue; }
+    f.classList.add('fx');
+    const key = location.hash.split('?')[0], search = fields.find((d) => d.querySelector('input[type=search]')), help = f.nextElementSibling?.matches('p.small.muted') ? f.nextElementSibling : null, card = f.parentElement;
+    search?.classList.add('fx-keep');
+    const act = document.createElement('div'); act.className = 'fx-keep fx-act' + (search ? '' : ' wide');
+    act.innerHTML = `<button type="button" class="btn fx-btn" aria-expanded="false"><svg class="ic"><use href="#i-filter"/></svg><span></span><b hidden></b></button>${help ? '<button type="button" class="icon-btn fx-help" aria-label="Bu ekran nasıl okunur?" aria-expanded="false">i</button>' : ''}`;
+    f.append(act);
+    const btn = act.querySelector('.fx-btn'), rest = fields.filter((d) => d !== search);
+    const sync = () => {
+      const on = rest.flatMap((d) => [...d.querySelectorAll('select')].filter((x) => x.selectedIndex > 0).map((x) => x.selectedOptions[0].textContent.trim()).concat([...d.querySelectorAll('input[type=checkbox]:checked')].map((x) => x.closest('label')?.textContent.trim() ?? '')));
+      btn.querySelector('span').textContent = search || !on.length ? 'Filtreler' : on.join(' · ');
+      const b = btn.querySelector('b'); b.hidden = !on.length; b.textContent = on.length;
+    };
+    const set = (open) => { fxOpen[key] = open; f.classList.toggle('fx-open', open); btn.setAttribute('aria-expanded', open); };
+    btn.onclick = () => set(!f.classList.contains('fx-open'));
+    f.addEventListener('change', sync); sync(); set(!!fxOpen[key]);
+    if (help) { help.classList.add('fx-helptext'); act.querySelector('.fx-help').onclick = (e) => { const o = card.classList.toggle('fx-help-open'); e.currentTarget.setAttribute('aria-expanded', o); }; }
+  }
+}
 function labelTables(root) {
   for (const t of $$('table:not([data-l])', root)) {
     t.dataset.l = '1'; t.classList.add('stack');
@@ -142,7 +168,8 @@ export function initShell(opts) {
   // Görseller: yüklenince iskelet durur, görsel yumuşakça belirir
   document.addEventListener('load', (e) => { if (e.target.tagName === 'IMG') { e.target.classList.add('ok'); } }, true);
   // Tablolara etiket
-  const mo = new MutationObserver(() => { labelTables($('#view')); labelTables($('#drawerBody')); });
+  const mo = new MutationObserver(() => { labelTables($('#view')); labelTables($('#drawerBody')); compactFilters($('#view')); });
+  $('#view').addEventListener('click', (e) => { const k = e.target.closest('.kpi'); if (k && !e.target.closest('a,button')) k.classList.toggle('open'); });
   mo.observe($('#view'), { childList: true, subtree: true }); mo.observe($('#drawerBody'), { childList: true, subtree: true });
   // İpucu (yalnızca fare ile)
   const tip = $('#tip');

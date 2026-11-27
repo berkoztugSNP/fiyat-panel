@@ -470,6 +470,22 @@ textarea:focus-visible{outline:none;background:var(--surface);border-color:var(-
   .filters label{font-size:11.5px;padding-left:4px}
   .filters select{border-radius:var(--r-pill);padding-left:14px;min-height:40px;font-size:15px}
   .card-head .filters{margin:0;padding:0;width:100%}
+  /* Süzgeçler: arama + "Filtreler" düğmesi tek satır; diğerleri dokununca iki sütun açılır (yatay kaydırma yok) */
+  .filters.fx:not(.fx-skip){flex-wrap:wrap;overflow:visible;margin:0;padding:0;gap:10px 8px;scroll-snap-type:none;align-items:center}
+  .filters.fx:not(.fx-skip)>div{flex:1 1 calc(50% - 4px);min-width:0;scroll-snap-align:none}
+  .filters.fx:not(.fx-skip)>div:not(.fx-keep){display:none} .filters.fx.fx-open>div:not(.fx-keep){display:flex;animation:fxIn var(--d3) var(--ease)}
+  .filters.fx select{width:100%}
+  .filters.fx:not(.fx-skip)>.fx-keep:has(input[type=search]){flex:1 1 0;order:-2;min-width:0!important}
+  .card:has(>.filters.fx:not(.fx-skip)){padding:10px} .card:has(>.filters.fx-open){padding-bottom:14px} .fx-helptext{margin:10px 6px 4px!important} .filters.fx>.fx-keep:has(input[type=search]) label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .filters.fx:not(.fx-skip)>.fx-act{display:flex;flex-direction:row;flex:none;order:-1;gap:6px;align-items:center} .filters.fx:not(.fx-skip)>.fx-act.wide{flex:1 1 100%} .fx-act.wide .fx-btn{flex:1;justify-content:flex-start}
+  .fx-btn{min-height:40px;border-radius:var(--r-pill);gap:6px;padding:0 14px;min-width:0} .fx-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0} .fx-btn .ic{width:17px;height:17px;flex:none}
+  .fx-btn b{flex:none;min-width:19px;height:19px;border-radius:99px;background:var(--brand-deep);color:#fff;font-size:11.5px;font-weight:600;display:grid;place-items:center;padding:0 5px} .fx-btn b[hidden]{display:none}
+  .filters.fx-open .fx-btn{background:var(--ink);color:var(--on-ink)}
+  .fx-help{font:600 15px/1 Georgia,serif;font-style:italic;width:40px;height:40px;border-radius:50%;background:var(--neutral-soft);color:var(--text-2);flex:none}
+  .fx-helptext{display:none} .fx-help-open>.fx-helptext{display:block;animation:fxIn var(--d3) var(--ease)}
+  /* Özet kutuları: açıklama tek satır; kutuya dokununca tamamı açılır */
+  .grid.g4:has(>.kpi)>.kpi{padding:12px var(--s4);cursor:pointer} .kpi .v{margin:3px 0 3px}
+  .kpi .s{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden} .kpi.open .s{display:block}
   /* Tablolar okunabilir listelere dönüşür */
   .tbl-wrap{border-radius:var(--r-lg);overflow:visible;border:0;background:transparent}
   table.stack,table.stack tbody,table.stack tr,table.stack td{display:block;width:100%}
@@ -570,3 +586,6 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 
 /* Giriş: şifreyi göster/gizle */
 .login-card .field{position:relative} .pw-eye{position:absolute;right:6px;bottom:5px;appearance:none;border:0;background:none;color:var(--accent);font:500 var(--fs-foot)/1 var(--font);min-height:34px;padding:0 10px;border-radius:8px;cursor:pointer} #lp{padding-right:76px}
+
+.filters>.fx-act{display:none}
+@keyframes fxIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
