@@ -13,7 +13,7 @@ const ic = (id) => `<svg class="ic"><use href="#${id}"/></svg>`;
 let H = null; // ana uygulamadan gelen yardımcılar: openDrawer, closeDrawer, toast, chart, cssv
 const Y = { preset: 'month', custom: null, compare: true, page: 'genel' };
 try { Object.assign(Y, JSON.parse(sessionStorage.getItem('sp_y') ?? '{}')); } catch {}
-const save = () => { try { sessionStorage.setItem('sp_y', JSON.stringify({ preset: Y.preset, custom: Y.custom, compare: Y.compare })); } catch {} };
+const save = () => { try { sessionStorage.setItem('sp_y', JSON.stringify({ preset: Y.preset, custom: Y.custom, compare: Y.compare, cmpCustom: Y.cmpCustom })); } catch {} };
 const range = () => C.rangeOf(Y.preset, Y.custom);
 
 export const TITLES = { genel: ['Genel Bakış', 'Hesaba gelen, reklam harcaması ve giderler'], siparisler: ['Siparişler', 'Sipariş tablosundan otomatik gelir'], reklam: ['Reklam Harcamaları', 'Google Ads ve Meta Ads; otomatik çekilir'], giderler: ['Giderler', 'Aylık giderler'], ayarlar: ['Ayarlar', 'Bağlantılar, bütçe ve yedek'] };
@@ -27,7 +27,7 @@ function rangeBar(extra = '') {
     <span class="grow"></span>${extra}</div>`;
 }
 function bindRange(view, rerender) {
-  $$('[data-preset]', view).forEach((b) => (b.onclick = () => { Y.preset = b.dataset.preset; if (Y.preset === 'custom' && !Y.custom) Y.custom = C.rangeOf('30d'); save(); rerender(); }));
+  $$('[data-preset]', view).forEach((b) => (b.onclick = () => { Y.preset = b.dataset.preset; Y.cmpCustom = null; if (Y.preset === 'custom' && !Y.custom) Y.custom = C.rangeOf('30d'); save(); rerender(); }));
   for (const [id, k] of [['#rFrom', 'from'], ['#rTo', 'to']]) { const el = $(id, view); if (el) el.onchange = () => { if (el.value) { Y.custom = { ...range(), [k]: el.value }; if (Y.custom.from > Y.custom.to) Y.custom[k === 'from' ? 'to' : 'from'] = el.value; save(); rerender(); } }; }
 }
 const delta = (cur, prev, invert) => { if (!Y.compare || prev == null || !prev) return ''; const d = (cur / prev - 1) * 100; if (!Number.isFinite(d)) return ''; const good = invert ? d < 0 : d > 0; return `<span class="delta ${Math.abs(d) < 0.05 ? 'flat' : good ? 'up' : 'down'}" title="Önceki döneme göre">${d > 0 ? '▲' : d < 0 ? '▼' : ''} ${pct(Math.abs(d))}</span>`; };
@@ -62,7 +62,7 @@ const curWarn = (series) => { const bad = series.filter((s) => s.currency && s.c
 /* ---------- Sayfalar ---------- */
 const pages = {
   genel(view) {
-    const r = range(), pr = C.compareRange(Y.preset, r), S = C.summarize(r), P = Y.compare ? C.summarize(pr) : null, series = S.ads.series;
+    const r = range(), pr = Y.cmpCustom ?? C.compareRange(Y.preset, r), S = C.summarize(r), P = Y.compare ? C.summarize(pr) : null, series = S.ads.series;
     if (!X.orders?.rows && !series.length && !D.expenses.length) {
       view.innerHTML = `<div class="steps">
         <div class="step">${ic('i-bag')}<h2>Sipariş tablosu</h2><p>Sipariş Excel'inizin paylaşım bağlantısı tanımlandığında müşteri adı, hesaba gelen tutar ve iade bilgisi her gün kendiliğinden çekilir.</p><a class="btn primary" href="#/y/ayarlar">Bağlantılar</a></div>
@@ -72,8 +72,8 @@ const pages = {
       return;
     }
     const pv = (f) => (P && (S.dated || f === 'ads') ? f === 'ads' ? P.ads.total : P[f] : null);
-    const was = (f, show) => (pv(f) != null && show ? `<div class="h-s was">Önceki dönem: <b>${money(pv(f), 0)}</b></div>` : '');
-    view.innerHTML = `${rangeBar(`<label class="switch" title="Bu ay, geçen ayın aynı günleriyle; diğer dönemler hemen önceki aynı uzunluktaki dönemle karşılaştırılır"><input type="checkbox" id="cmp"${Y.compare ? ' checked' : ''}>Önceki dönemle karşılaştır${Y.compare ? ` <span class="num">(${dTR(pr.from)} – ${dTR(pr.to)})</span>` : ''}</label>`)}
+    const was = (f, show) => (pv(f) != null && show ? `<div class="h-s was">Karşılaştırılan dönem: <b>${money(pv(f), 0)}</b></div>` : '');
+    view.innerHTML = `${rangeBar(`<label class="switch" title="Bu ay, geçen ayın aynı günleriyle; diğer dönemler hemen önceki aynı uzunluktaki dönemle karşılaştırılır"><input type="checkbox" id="cmp"${Y.compare ? ' checked' : ''}>Dönem karşılaştırma${Y.compare ? ` <span class="num">(${dTR(pr.from)} – ${dTR(pr.to)})</span>` : ''}</label>`)}
       ${X.orders?.rows && !S.dated ? `<div class="note warn">Sipariş tablosunda tarih sütunu bulunamadı; sipariş rakamları seçilen dönemi değil <b>tablonun tamamını</b> gösteriyor. Reklam ve giderler seçilen döneme aittir.</div>` : ''}${curWarn(series)}
       <div class="hero">
         <div class="lead"><div class="h-l">Hesaba gelen ${delta(S.income, pv('income'))}</div><div class="h-v">${X.orders?.rows ? money(S.income, 0) : '—'}</div><div class="h-s">${X.orders?.rows ? `${num(S.orderCount)} sipariş · ortalama ${money(S.avg, 0)}${S.returnCount ? ` · ${S.returnCount} iade` : ''}` : 'Sipariş tablosu bağlı değil'}</div>${was('income', X.orders?.rows)}</div>
@@ -85,27 +85,38 @@ const pages = {
         <div class="mgroup"><h3>Reklam</h3>${series.map((s) => mrow(esc(s.label), money(s.total, 0))).join('') || mrow('Bağlı hesap yok', '—')}${mrow('Toplam', money(S.ads.total, 0), 'total')}${mrow('Reklamın hesaba gelene oranı', pct(S.adShare))}${mrow('Hesaba gelen / reklam', xf(S.mer))}</div>
         <div class="mgroup"><h3>Giderler</h3>${S.exp.byCat.slice(0, 5).map(([k, v]) => mrow(esc(k), money(v, 0))).join('') || mrow('Bu dönemde gider yok', '—')}${mrow('Toplam', money(S.exp.total, 0), 'total', 'Aylık giderin seçilen döneme düşen payı')}</div>
       </div>
-      ${P && S.dated ? `<div class="card"><div class="card-head"><div><h2>Önceki dönemle karşılaştırma</h2><p class="muted small num">${dTR(r.from)} – ${dTR(r.to)} · önceki: ${dTR(pr.from)} – ${dTR(pr.to)}</p></div><div class="legend"><span><i class="dot" style="background:var(--brand-deep)"></i>Bu dönem</span><span><i class="dot" style="background:var(--text-3)"></i>Önceki dönem</span></div></div>
+      ${P && S.dated ? `<div class="card"><div class="card-head"><div><h2>Dönem karşılaştırma</h2><p class="muted small">İki tarih aralığını da değiştirebilirsiniz</p></div><div class="legend"><span><i class="dot" style="background:var(--brand-deep)"></i>Bu dönem</span><span><i class="dot" style="background:var(--text-3)"></i>Karşılaştırılan</span></div></div>
+        <div class="cmp-pick">
+          <div class="cmp-box a"><span><i class="dot" style="background:var(--brand-deep)"></i>Bu dönem · ${C.dayCount(r)} gün</span><div><input type="date" id="cAf" value="${r.from}" max="${r.to}" aria-label="Bu dönem başlangıç"><em>–</em><input type="date" id="cAt" value="${r.to}" min="${r.from}" aria-label="Bu dönem bitiş"></div></div>
+          <div class="cmp-vs" aria-hidden="true">↔</div>
+          <div class="cmp-box"><span><i class="dot" style="background:var(--text-3)"></i>Karşılaştırılan dönem · ${C.dayCount(pr)} gün</span><div><input type="date" id="cBf" value="${pr.from}" max="${pr.to}" aria-label="Karşılaştırılan dönem başlangıç"><em>–</em><input type="date" id="cBt" value="${pr.to}" min="${pr.from}" aria-label="Karşılaştırılan dönem bitiş"></div></div>
+          ${Y.cmpCustom ? '<button class="btn small" id="cReset" title="Karşılaştırılan dönemi otomatik seçime döndür">Otomatik</button>' : ''}
+        </div>
+        ${C.dayCount(r) !== C.dayCount(pr) ? `<div class="note" style="margin-top:var(--s3)">İki dönemin uzunluğu farklı (${C.dayCount(r)} ve ${C.dayCount(pr)} gün); toplamlar bu yüzden doğrudan kıyaslanamayabilir.</div>` : ''}
         <div class="grid g2" style="margin-top:var(--s3);align-items:start">
           <div><div class="small muted" style="margin-bottom:6px">Birikimli hesaba gelen (dönemin gün gün toplamı)</div><div class="chart-box" style="height:260px"><canvas id="yc0" role="img" aria-label="Bu dönem ve önceki dönemin birikimli hesaba gelen tutarı"></canvas></div></div>
-          <div class="tbl-wrap flat"><table><thead><tr><th>Gösterge</th><th class="r">Bu dönem</th><th class="r">Önceki</th><th class="r">Değişim</th></tr></thead><tbody>${[['Hesaba gelen', S.income, P.income, money], ['Sipariş adedi', S.orderCount, P.orderCount, num], ['Ortalama sipariş', S.avg, P.avg, money], ['İade adedi', S.returnCount, P.returnCount, num, true], ['Reklam harcaması', S.ads.total, P.ads.total, money, true], ['Giderler', S.exp.total, P.exp.total, money, true], ['Kalan', S.left, P.left, money]].map(([l, a, b, f, inv]) => `<tr><td style="white-space:nowrap">${l}</td><td class="r num"><b>${f === money ? money(a, 0) : f(a)}</b></td><td class="r num">${f === money ? money(b, 0) : f(b)}</td><td class="r">${delta(a, b, inv) || '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table></div>
+          <div class="tbl-wrap flat"><table><thead><tr><th>Gösterge</th><th class="r">Bu dönem</th><th class="r">Karşılaştırılan</th><th class="r">Değişim</th></tr></thead><tbody>${[['Hesaba gelen', S.income, P.income, money], ['Sipariş adedi', S.orderCount, P.orderCount, num], ['Ortalama sipariş', S.avg, P.avg, money], ['İade adedi', S.returnCount, P.returnCount, num, true], ['Reklam harcaması', S.ads.total, P.ads.total, money, true], ['Giderler', S.exp.total, P.exp.total, money, true], ['Kalan', S.left, P.left, money]].map(([l, a, b, f, inv]) => `<tr><td style="white-space:nowrap">${l}</td><td class="r num"><b>${f === money ? money(a, 0) : f(a)}</b></td><td class="r num">${f === money ? money(b, 0) : f(b)}</td><td class="r">${delta(a, b, inv) || '<span class="muted">—</span>'}</td></tr>`).join('')}</tbody></table></div>
         </div></div>` : ''}
       <div class="grid g2">
-        ${S.dated ? `<div class="card"><div class="card-head"><div><h2>Günlük hesaba gelen</h2><p class="muted small">İadeler hariç${P ? ' · gri: önceki dönemin aynı sıradaki günü' : ''}</p></div></div><div class="chart-box" style="height:260px"><canvas id="yc1" role="img" aria-label="Günlük hesaba gelen tutar grafiği"></canvas></div></div>` : ''}
+        ${S.dated ? `<div class="card"><div class="card-head"><div><h2>Günlük hesaba gelen</h2><p class="muted small">İadeler hariç${P ? ' · gri: karşılaştırılan dönemin aynı sıradaki günü' : ''}</p></div></div><div class="chart-box" style="height:260px"><canvas id="yc1" role="img" aria-label="Günlük hesaba gelen tutar grafiği"></canvas></div></div>` : ''}
         ${series.length ? `<div class="card"><div class="card-head"><div><h2>Günlük reklam harcaması</h2></div>${legend(series)}</div><div class="chart-box" style="height:260px"><canvas id="yc3" role="img" aria-label="Günlük reklam harcaması grafiği"></canvas></div></div>` : ''}
       </div>`;
     bindRange(view, () => route('genel')); $('#cmp', view).onchange = (e) => { Y.compare = e.target.checked; save(); route('genel'); };
     const ds = C.dailySeries(r);
+    const setA = (k, v) => { if (!v) return; Y.custom = { ...r, [k]: v }; if (Y.custom.from > Y.custom.to) Y.custom[k === 'from' ? 'to' : 'from'] = v; Y.preset = 'custom'; save(); route('genel'); };
+    const setB = (k, v) => { if (!v) return; Y.cmpCustom = { ...pr, [k]: v }; if (Y.cmpCustom.from > Y.cmpCustom.to) Y.cmpCustom[k === 'from' ? 'to' : 'from'] = v; save(); route('genel'); };
+    for (const [id, fn, k] of [['#cAf', setA, 'from'], ['#cAt', setA, 'to'], ['#cBf', setB, 'from'], ['#cBt', setB, 'to']]) { const el = $(id, view); if (el) el.onchange = () => fn(k, el.value); }
+    if ($('#cReset', view)) $('#cReset', view).onclick = () => { Y.cmpCustom = null; save(); route('genel'); };
     const pd = P && S.dated ? C.dailySeries(pr) : null, short = (d) => d.slice(8) + '.' + d.slice(5, 7);
     if ($('#yc0')) {
       const n = Math.max(ds.days.length, pd.days.length), cum = (a) => { let t = 0; return a.map((v) => (t += v)); }, today = C.todayTR();
       const cur = cum(ds.income).map((v, i) => (ds.days[i] > today ? null : v)), prev = cum(pd.income);
       H.chart($('#yc0'), { type: 'line', data: { labels: Array.from({ length: n }, (_, i) => `${i + 1}. gün`), datasets: [
         { label: 'Bu dönem', data: cur, borderColor: H.cssv('--brand-deep'), backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.25 },
-        { label: 'Önceki dönem', data: prev, borderColor: H.cssv('--text-3'), backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 4, tension: 0.25 }] },
+        { label: 'Karşılaştırılan', data: prev, borderColor: H.cssv('--text-3'), backgroundColor: 'transparent', borderWidth: 2, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 4, tension: 0.25 }] },
         options: chartBase({ plugins: { tooltip: { callbacks: { title: (c) => { const i = c[0].dataIndex; return `${i + 1}. gün · ${ds.days[i] ? short(ds.days[i]) : '—'} / ${pd.days[i] ? short(pd.days[i]) : '—'}`; }, label: (c) => ' ' + c.dataset.label + ': ' + money(c.parsed.y, 0) } } } }) });
     }
-    if ($('#yc1')) H.chart($('#yc1'), { type: 'bar', data: { labels: ds.days.map(short), datasets: [{ label: 'Bu dönem', data: ds.income, backgroundColor: H.cssv('--brand'), borderRadius: 5, maxBarThickness: 18 }, ...(pd ? [{ label: 'Önceki dönem', data: ds.days.map((_, i) => pd.income[i] ?? 0), backgroundColor: H.cssv('--surface-3'), borderRadius: 5, maxBarThickness: 18 }] : [])] }, options: chartBase({ plugins: { tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + money(c.parsed.y, 0) } } } }) });
+    if ($('#yc1')) H.chart($('#yc1'), { type: 'bar', data: { labels: ds.days.map(short), datasets: [{ label: 'Bu dönem', data: ds.income, backgroundColor: H.cssv('--brand'), borderRadius: 5, maxBarThickness: 18 }, ...(pd ? [{ label: 'Karşılaştırılan', data: ds.days.map((_, i) => pd.income[i] ?? 0), backgroundColor: H.cssv('--surface-3'), borderRadius: 5, maxBarThickness: 18 }] : [])] }, options: chartBase({ plugins: { tooltip: { callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + money(c.parsed.y, 0) } } } }) });
     if ($('#yc3')) adChart($('#yc3'), ds);
   },
 

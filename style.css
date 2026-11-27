@@ -593,3 +593,13 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 .h-s.was{margin-top:2px;padding-top:8px;border-top:1px solid var(--hairline)} .h-s.was b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
 
 .tbl-wrap.flat{border:0;border-radius:0;background:none;box-shadow:none}
+
+/* Dönem karşılaştırma: iki tarih aralığı seçici */
+.cmp-pick{display:flex;align-items:stretch;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s3)}
+.cmp-box{flex:1 1 280px;min-width:0;background:var(--neutral-soft);border-radius:var(--r-md);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.cmp-box.a{background:color-mix(in srgb,var(--brand) 22%,var(--surface))}
+.cmp-box>span{font-size:var(--fs-caption);color:var(--text-2);font-weight:500;display:flex;align-items:center;gap:6px}
+.cmp-box>div{display:flex;align-items:center;gap:6px} .cmp-box em{font-style:normal;color:var(--text-3)}
+.cmp-box input[type=date]{flex:1;min-width:0;min-height:36px;background:var(--surface);font-size:var(--fs-foot);padding:0 8px}
+.cmp-vs{align-self:center;color:var(--text-3);font-size:18px} .cmp-pick>.btn{align-self:center}
+@media (max-width:760px){.cmp-vs{display:none}.cmp-box{flex-basis:100%}}
