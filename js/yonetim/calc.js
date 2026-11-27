@@ -70,7 +70,7 @@ export function ordersIn(r) {
 // Reklam serileri: Google Ads + her Meta reklam hesabı ayrı
 export function adSeries() {
   const out = [];
-  if (X.ads?.google?.days) out.push({ key: 'google', label: 'Google Ads', platform: 'Google Ads', days: X.ads.google.days });
+  if (X.ads?.google?.days) out.push({ key: 'google', label: 'Google Ads', platform: 'Google Ads', days: X.ads.google.days, currency: X.ads.google.currency });
   for (const [id, a] of Object.entries(X.ads?.meta?.accounts ?? {})) out.push({ key: id, label: 'Meta Ads — ' + (a.label ?? id), platform: 'Meta Ads', days: a.days ?? {}, currency: a.currency });
   return out;
 }
