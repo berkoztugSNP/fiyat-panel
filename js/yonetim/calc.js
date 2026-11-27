@@ -50,6 +50,14 @@ export function rangeOf(preset, custom) {
   }
 }
 export const dayCount = (r) => Math.round((new Date(r.to) - new Date(r.from)) / 864e5) + 1;
+// Karşılaştırma dönemi: "Bu ay" → geçen ayın aynı günleri; "Geçen ay" → ondan önceki ayın tamamı; "Bu yıl" → geçen yılın aynı günleri; diğerleri → hemen önceki aynı uzunluktaki dönem
+export function compareRange(preset, r) {
+  const [y, m, d] = r.to.split('-').map(Number);
+  if (preset === 'month') { const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1, last = new Date(py, pm, 0).getDate(); return { from: `${py}-${pad(pm)}-01`, to: `${py}-${pad(pm)}-${pad(Math.min(d, last))}` }; }
+  if (preset === 'lastmonth') { const e = new Date(y, m - 1, 0); return { from: `${e.getFullYear()}-${pad(e.getMonth() + 1)}-01`, to: iso(e) }; }
+  if (preset === 'year') return { from: `${y - 1}-01-01`, to: `${y - 1}-${pad(m)}-${pad(Math.min(d, new Date(y - 1, m, 0).getDate()))}` };
+  return prevRange(r);
+}
 export const prevRange = (r) => { const n = dayCount(r); return { from: addDays(r.from, -n), to: addDays(r.from, -1) }; };
 export const daysIn = (r) => { const out = []; for (let d = r.from; d <= r.to; d = addDays(d, 1)) out.push(d); return out; };
 const inR = (d, r) => d && d >= r.from && d <= r.to;
