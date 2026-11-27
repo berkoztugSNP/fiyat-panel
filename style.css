@@ -267,7 +267,14 @@ canvas{max-width:100%}
 #navY,#tabbarY{display:none}
 :root[data-app="y"] #nav{display:none} :root[data-app="y"] #navY{display:flex}
 :root[data-app="y"] .ref,:root[data-app="y"] #alertBtn,:root[data-app="y"] #banners{display:none}
-:root[data-side="mini"] .app-switch{display:none}
+/* Yönetim Paneline giriş / Fiyat Takip'e dönüş düğmesi */
+.app-go{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 12px;border-radius:var(--r-md);font:600 var(--fs-foot)/1 var(--font);letter-spacing:-.005em;text-decoration:none;white-space:nowrap;overflow:hidden;transition:background var(--d2) var(--ease),transform var(--d1) var(--ease)}
+.app-go:hover{text-decoration:none} .app-go:active{transform:scale(.98)} .app-go span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis} .app-go .ic{flex:none}
+.app-go.to-y{background:var(--ink);color:var(--on-ink)} .app-go.to-y:hover{background:color-mix(in srgb,var(--ink) 86%,var(--bg))}
+.app-go.to-f{background:var(--neutral-soft);color:var(--text)} .app-go.to-f:hover{background:var(--surface-3)}
+.app-go .chev{width:14px;height:14px;opacity:.7} .app-go .back{transform:rotate(180deg)}
+:root[data-app="y"] .to-y,:root:not([data-app="y"]) .to-f{display:none!important}
+:root[data-side="mini"] .app-go{padding:0;justify-content:center} :root[data-side="mini"] .app-go span,:root[data-side="mini"] .app-go .chev:not(.back){display:none}
 /* Sayfa araç çubuğu: dönem seçici + eylemler */
 .bar{display:flex;gap:var(--s3);align-items:center;flex-wrap:wrap}
 .bar .grow{flex:1;min-width:0}
@@ -439,7 +446,7 @@ textarea:focus-visible{outline:none;background:var(--surface);border-color:var(-
   :root{--fs-body:15px;--fs-foot:13px;--fs-caption:12px;--fs-large:30px;--fs-stat:26px}
   .app{display:block}
   .side{display:none}
-  .only-mobile{display:inline-grid}
+  .only-mobile{display:inline-grid} .app-go-m.only-mobile{display:block;padding:0 0 var(--s3)}
   .main{padding:0 16px calc(var(--tabbar-h) + 34px + env(safe-area-inset-bottom));max-width:none}
   .top{padding:calc(10px + env(safe-area-inset-top)) 16px 10px;margin:0 -16px var(--s3);align-items:flex-end}
   .top-title h1{font-size:25px;letter-spacing:-.03em}
@@ -530,3 +537,6 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 }
 @media (prefers-contrast:more){ :root{--hairline:rgba(60,60,67,.35);--text-2:#4a4a4f} }
 @media print{ .side,.tabbar,.top,.toasts{display:none!important} .app{display:block} }
+
+/* Yönetim: 1:2 ve 2:1 ızgaralar (dar ekranda tek sütun) */
+@media (min-width:1181px){.grid.g12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}.grid.g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}

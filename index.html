@@ -70,20 +70,17 @@
       <button class="icon-btn" id="sideToggle" aria-label="Kenar çubuğunu daralt veya genişlet" data-tip="Kenar çubuğu  ⌘B"><svg class="ic"><use href="#i-side"/></svg></button>
     </div>
     <button class="search-btn" id="paletteBtn" aria-label="Ara veya sayfaya git"><svg class="ic"><use href="#i-search"/></svg><span>Ara</span><kbd>⌘K</kbd></button>
-    <div class="seg app-switch" role="tablist" aria-label="Uygulama">
-      <a href="#/genel" role="tab" data-app="f">Fiyat Takip</a>
-      <a href="#/y/genel" role="tab" data-app="y">Yönetim</a>
-    </div>
+    <a class="app-go to-y" href="#/y/genel"><svg class="ic"><use href="#i-wallet"/></svg><span>Yönetim Paneline Giriş</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
+    <a class="app-go to-f" href="#/genel"><svg class="ic chev back"><use href="#i-chev"/></svg><span>Fiyat Takip'e Dön</span></a>
     <nav id="navY" class="nav" aria-label="Yönetim menüsü">
       <div class="nav-label">Genel</div>
       <a href="#/y/genel" data-y="genel"><svg class="ic"><use href="#i-home"/></svg><span>Genel Bakış</span></a>
       <div class="nav-label">E-Ticaret</div>
-      <a href="#/y/siparisler" data-y="siparisler"><svg class="ic"><use href="#i-bag"/></svg><span>Siparişler</span><b id="costBadge" class="badge" hidden></b></a>
-      <a href="#/y/karlilik" data-y="karlilik"><svg class="ic"><use href="#i-trend"/></svg><span>Kârlılık Analizi</span></a>
+      <a href="#/y/siparisler" data-y="siparisler"><svg class="ic"><use href="#i-bag"/></svg><span>Siparişler</span></a>
       <div class="nav-label">Pazarlama</div>
       <a href="#/y/reklam" data-y="reklam"><svg class="ic"><use href="#i-mega"/></svg><span>Reklam Harcamaları</span></a>
       <div class="nav-label">Finans</div>
-      <a href="#/y/giderler" data-y="giderler"><svg class="ic"><use href="#i-wallet"/></svg><span>Gelir ve Giderler</span></a>
+      <a href="#/y/giderler" data-y="giderler"><svg class="ic"><use href="#i-wallet"/></svg><span>Giderler</span></a>
       <div class="nav-label">Diğer</div>
       <a href="#/y/ayarlar" data-y="ayarlar"><svg class="ic"><use href="#i-gear"/></svg><span>Ayarlar</span></a>
     </nav>
@@ -118,6 +115,10 @@
         <label class="ref"><span>Referans</span><select id="refSel" aria-label="Referans marka"></select></label>
       </div>
     </header>
+    <div class="app-go-m only-mobile">
+      <a class="app-go to-y" href="#/y/genel"><svg class="ic"><use href="#i-wallet"/></svg><span>Yönetim Paneline Giriş</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
+      <a class="app-go to-f" href="#/genel"><svg class="ic chev back"><use href="#i-chev"/></svg><span>Fiyat Takip'e Dön</span></a>
+    </div>
     <div id="banners" class="banners"></div>
     <main id="view" class="view" tabindex="-1"></main>
   </div>
@@ -147,10 +148,9 @@
   <div class="sheet">
     <div class="grab" aria-hidden="true"></div>
     <div class="menu-list">
-      <a href="#/y/karlilik" data-close><svg class="ic"><use href="#i-trend"/></svg><span>Kârlılık Analizi</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
       <a href="#/y/ayarlar" data-close><svg class="ic"><use href="#i-gear"/></svg><span>Ayarlar</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
     </div>
-    <div class="menu-list"><a href="#/genel" data-close><svg class="ic"><use href="#i-compare"/></svg><span>Fiyat Takip'e geç</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
+    <div class="menu-list"><a href="#/genel" data-close><svg class="ic"><use href="#i-compare"/></svg><span>Fiyat Takip'e Dön</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
   </div>
 </div>
 
@@ -184,7 +184,7 @@
       <a href="#/raporlar" data-close><svg class="ic"><use href="#i-doc"/></svg><span>Raporlar</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
       <a href="#/durum" data-close><svg class="ic"><use href="#i-pulse"/></svg><span>Veri Durumu</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
     </div>
-    <div class="menu-list"><a href="#/y/genel" data-close><svg class="ic"><use href="#i-wallet"/></svg><span>Yönetim Paneli'ne geç</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
+    <div class="menu-list"><a href="#/y/genel" data-close><svg class="ic"><use href="#i-wallet"/></svg><span>Yönetim Paneline Giriş</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
     <div class="menu-list">
       <button id="themeBtnM"><svg class="ic"><use href="#i-theme"/></svg><span>Tema</span><em id="themeLblM">Sistem</em></button>
       <button id="logoutM" class="danger"><svg class="ic"><use href="#i-out"/></svg><span>Çıkış yap</span></button>

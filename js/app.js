@@ -100,7 +100,7 @@ async function start(s) {
   });
   $('#alertBtn').onclick = openAlerts; alertBadge();
   // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
-  await YON.init({ user: s.user, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
+  await YON.init({ user: s.user, data: S.data.yonetim, publish: S.data.publish, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
   banners(); route();
 }
 
@@ -743,7 +743,7 @@ function route(keepScroll) {
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
   const isY = r === 'y' || r.startsWith('y/');
   document.documentElement.dataset.app = isY ? 'y' : 'f';
-  document.querySelectorAll('.app-switch [data-app]').forEach((a) => { const on = a.dataset.app === (isY ? 'y' : 'f'); a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
+  
   if (isY) { lastRoute = null; YON.route(r.slice(2) || 'genel'); return; }
   document.querySelector('#yFoot')?.remove();
   const name = pages[r] ? r : 'genel';
