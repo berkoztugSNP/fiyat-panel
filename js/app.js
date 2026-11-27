@@ -449,7 +449,7 @@ const pages = {
       <div class="filters"><div><label for="feedFile">XML dosyası</label><input id="feedFile" type="file" accept=".xml,text/xml,application/xml"></div></div>
       <div id="feedOut" style="margin-top:12px"></div></div>` : ''}
     <div class="card"><div class="card-head"><div><h2>Fiyatları şimdi güncelle</h2><p class="muted small">DDiamond, Lizay ve Sina her gün; Zen ve Atasay iki günde bir otomatik güncellenir. Beklemeden taratmak için düğmeyi kullanın; sonuç yaklaşık 5 dakikada panele yansır.</p></div>
-      <button class="btn primary" id="refreshNow"${S.data.publish ? '' : ' disabled'}>Şimdi güncelle</button></div><div id="refreshOut" class="small muted">${S.data.publish ? 'Bu düğme DDiamond ve Sina verisini yeniler. Zen, erişim kısıtı nedeniyle yalnızca zamanlanmış görevle güncellenir.' : 'Bu düğme henüz kurulmadı: depoya UPLOAD_TOKEN erişim anahtarı eklenince etkinleşir.'}</div></div>
+      <button class="btn primary" id="refreshNow"${S.data.publish ? '' : ' disabled'}>Şimdi güncelle</button></div><div id="refreshOut" class="small muted">${S.data.publish ? 'Bu düğme DDiamond, Lizay ve Sina verisini yeniler. Zen ve Atasay yalnızca kendi zamanlanmış taramalarıyla güncellenir.' : 'Bu düğme henüz kurulmadı: depoya UPLOAD_TOKEN erişim anahtarı eklenince etkinleşir.'}</div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Marka</th><th>Durum</th><th class="r">Aktif ürün</th><th>Son başarılı güncelleme</th><th>Not</th></tr></thead><tbody>${Object.entries(S.data.brands).map(([b, i]) => `<tr><td>${chip(b)} ${esc(i.name)}</td><td><b>${i.status === 'ok' ? '✓' : '⚠'} ${ST[i.status] ?? i.status}</b></td><td class="r num">${i.count.toLocaleString('tr-TR')}</td><td>${i.lastOk ? dstr(i.lastOk) : '—'}</td><td class="small muted">${i.source === 'xml' ? 'Kaynak: yüklenen XML' : i.source === 'manual' || b === MANUAL ? 'Kaynak: yüklenen ürün sayfaları' : 'Kaynak: site taraması'}${i.error ? ' · ' + esc(i.error) : ''}</td></tr>`).join('')}</tbody></table></div>
     ${blocked.length ? `<div class="card"><h2>Engellenen siteler için ne yapılmalı?</h2><p>Bu siteler Cloudflare bot korumasıyla otomatik istekleri reddediyor. Koruma bilerek konulduğu için panel bunu aşmaya çalışmaz.</p><p>Günlük güncellemenin çalıştığı sunucunun IP'si engelliyse o markadan veri alınamaz; farklı bir çalıştırma ortamı veya izinli bir veri kaynağı gerekir. Eski veriler korunur.</p></div>` : ''}
     <div class="card"><div class="card-head"><div><h2>Güncelleme geçmişi</h2><p class="muted small">Veriler her gün otomatik taranır. Son veri paketi: ${new Date(S.data.generatedAt).toLocaleString('tr-TR')}</p></div></div>
@@ -478,11 +478,11 @@ const pages = {
       const noSpec = uniq.filter((p) => !p.stones.length).length;
       out.innerHTML = `${uniq.length ? `<div class="tbl-wrap" style="margin-bottom:10px"><table><thead><tr><th>Ürün</th><th class="r">Karat</th><th>Renk / Berraklık</th><th>Ayar</th><th class="r">Fiyat</th></tr></thead><tbody>${uniq.slice(0, 50).map((p) => { const c = classify(p); return `<tr><td>${esc(p.name)} <span class="muted small">${esc(p.code)}</span></td><td class="r num">${c.ct != null ? c.ct.toLocaleString('tr-TR') : '—'}</td><td>${esc(c.color ?? '—')} / ${esc(c.clarity ?? '—')}</td><td>${p.ayar ?? '—'}</td><td class="r num"><b>${tl(p.price)}</b></td></tr>`; }).join('')}</tbody></table></div>` : ''}
         <p style="margin:0 0 10px"><b>${uniq.length} ürün okundu.</b>${bad.length ? ` <span class="form-err" style="display:inline-block">${bad.length} dosya okunamadı: ${esc(bad.slice(0, 5).join(', '))}${bad.length > 5 ? '…' : ''}. Sayfayı "Yalnızca HTML" olarak kaydettiğinizden emin olun.</span>` : ''}${noSpec ? ` <span class="muted">${noSpec} üründe taş tablosu bulunamadı.</span>` : ''}</p>
-        ${uniq.length ? `<button class="btn primary" id="manApply">${S.data.publish ? 'Ürünleri ekle ve herkese yayınla' : 'Ürünleri bu tarayıcıda ekle'}</button>${S.data.publish ? '' : '<p class="small muted" style="margin:8px 0 0">Herkese yayınlama henüz kurulmadı (UPLOAD_TOKEN); ürünler yalnızca bu tarayıcıda görünür.</p>'}` : ''}`;
+        ${uniq.length ? `<button class="btn primary" id="manApply">${S.data.publish?.canWrite ? 'Ürünleri ekle ve herkese yayınla' : 'Ürünleri bu tarayıcıda ekle'}</button>${S.data.publish?.canWrite ? '' : '<p class="small muted" style="margin:8px 0 0">Herkese yayınlama kurulu değil; ürünler yalnızca bu tarayıcıda görünür.</p>'}` : ''}`;
       if (uniq.length) $('#manApply').onclick = async () => {
         const btn = $('#manApply'); btn.disabled = true; btn.textContent = 'Ekleniyor…';
         let pubErr = null, published = false;
-        if (S.data.publish) { try { await publishManual(uniq, S.user); published = true; } catch (e) { pubErr = e.message; } }
+        if (S.data.publish?.canWrite) { try { await publishManual(uniq, S.user); published = true; } catch (e) { pubErr = e.message; } }
         applyManual(uniq); reindex();
         if (!published) { try { const lm = JSON.parse(localStorage.getItem('sp_manual') ?? '{"items":{}}'); for (const it of uniq) lm.items[it.code] = it; localStorage.setItem('sp_manual', JSON.stringify(lm)); S.localManual = Object.keys(lm.items).length; } catch {} }
         const sel = $('#refSel'), cur = sel.value; sel.innerHTML = Object.keys(S.data.brands).filter((x) => brand(x).count > 0).map((x) => `<option value="${x}">${esc(brand(x).name)}</option>`).join(''); sel.value = cur;
@@ -498,13 +498,13 @@ const pages = {
       try { text = await file.text(); parsed = parseMerchantFeed(text); } catch (e) { out.innerHTML = `<div class="form-err">${esc(e.message?.startsWith('Bu dosya') || e.message?.startsWith('Dosyada') ? e.message : 'Dosya okunamadı. Geçerli bir XML dosyası seçip tekrar deneyin.')}</div>`; return; }
       const d = feedDiff(fb, parsed.products), noCt = parsed.products.filter((p) => !p.stones.length).length;
       out.innerHTML = `<p style="margin:0 0 10px"><b>${parsed.products.length.toLocaleString('tr-TR')} ürün okundu.</b> ${d.had ? `Mevcut veriye göre: ${d.changed} fiyat değişimi · ${d.added} yeni ürün · ${d.removed} kalkan ürün.` : ''} ${parsed.skipped ? `<span class="muted">${parsed.skipped} satır atlandı (yinelenen kod veya eksik fiyat).</span>` : ''} ${noCt ? `<span class="muted">${noCt} üründe karat bilgisi yok.</span>` : ''}</p>
-        <button class="btn primary" id="feedApply">${S.data.publish ? "XML'i uygula ve herkese yayınla" : "XML'i bu tarayıcıda uygula"}</button>
-        ${S.data.publish ? '' : '<p class="small muted" style="margin:8px 0 0">Herkese yayınlama henüz kurulmadı; dosya yalnızca bu tarayıcıdaki karşılaştırmalarda kullanılır.</p>'}`;
+        <button class="btn primary" id="feedApply">${S.data.publish?.canWrite ? "XML'i uygula ve herkese yayınla" : "XML'i bu tarayıcıda uygula"}</button>
+        ${S.data.publish?.canWrite ? '' : '<p class="small muted" style="margin:8px 0 0">Herkese yayınlama kurulu değil; dosya yalnızca bu tarayıcıdaki karşılaştırmalarda kullanılır.</p>'}`;
       $('#feedApply').onclick = async () => {
         const btn = $('#feedApply'); btn.disabled = true; btn.textContent = 'Uygulanıyor…';
         const feed = { uploadedAt: new Date().toISOString(), by: S.user, products: parsed.products, published: false };
         let pubErr = null;
-        if (S.data.publish) { try { await publishFeed(text, S.user); feed.published = true; } catch (e) { pubErr = e.message; } }
+        if (S.data.publish?.canWrite) { try { await publishFeed(text, S.user); feed.published = true; } catch (e) { pubErr = e.message; } }
         applyFeed(fb, feed); reindex();
         try { localStorage.setItem('sp_feed', JSON.stringify(feed)); } catch {}
         if (!localStorage.getItem('sp_ref') || !(brand(localStorage.getItem('sp_ref'))?.count > 0)) S.ref = fb;
