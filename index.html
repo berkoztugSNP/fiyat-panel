@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sina Pırlanta · Fiyat Takip Paneli</title>
+<link rel="icon" href="img/logo.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login" class="login" hidden>
+  <form id="loginForm" class="login-card" autocomplete="on">
+    <img src="img/logo.png" alt="Sina Pırlanta" width="190" height="71">
+    <h1>Fiyat Takip Paneli</h1>
+    <p class="muted">E-ticaret birimi · rakip fiyat analizi</p>
+    <label for="lu">Kullanıcı adı</label>
+    <input id="lu" name="username" autocomplete="username" required autofocus>
+    <label for="lp">Şifre</label>
+    <input id="lp" name="password" type="password" autocomplete="current-password" required>
+    <div id="loginErr" class="form-err" role="alert" hidden></div>
+    <button class="btn primary" id="loginBtn" type="submit">Giriş yap</button>
+  </form>
+</div>
+
+<div id="app" class="app" hidden>
+  <aside class="side">
+    <div class="side-logo"><img src="img/logo.png" alt="Sina Pırlanta" width="150" height="56"></div>
+    <nav id="nav" class="nav" aria-label="Ana menü">
+      <a href="#/genel" data-r="genel">Genel Bakış</a>
+      <a href="#/bildirimler" data-r="bildirimler">Bildirimler <span id="navBadge" class="badge" hidden></span></a>
+      <a href="#/kiyas" data-r="kiyas">Model Kıyaslama</a>
+      <a href="#/karsilastirma" data-r="karsilastirma">Segment Karşılaştırma</a>
+      <a href="#/urunler" data-r="urunler">Ürünler</a>
+      <a href="#/raporlar" data-r="raporlar">Raporlar</a>
+      <a href="#/durum" data-r="durum">Veri Durumu</a>
+    </nav>
+    <div class="side-foot">
+      <div id="who" class="muted small"></div>
+      <button id="logout" class="btn ghost small">Çıkış yap</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="top">
+      <div>
+        <h1 id="pageTitle">Genel Bakış</h1>
+        <div id="pageSub" class="muted small"></div>
+      </div>
+      <div class="top-right">
+        <label class="small muted" for="refSel">Referans marka</label>
+        <select id="refSel"></select>
+      </div>
+    </header>
+    <div id="banners"></div>
+    <section id="view" class="view"></section>
+  </main>
+</div>
+
+<div id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+  <div class="drawer-bg" data-close></div>
+  <div class="drawer-panel">
+    <div class="drawer-head"><h2 id="drawerTitle"></h2><button class="btn ghost" data-close aria-label="Kapat">Kapat ✕</button></div>
+    <div id="drawerBody" class="drawer-body"></div>
+  </div>
+</div>
+<div id="tip" class="tip" hidden></div>
+<script src="vendor/chart.umd.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
