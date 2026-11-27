@@ -753,9 +753,11 @@ function bindLogoHold() {
     setTimeout(() => { location.hash = toY ? '#/y/genel' : '#/genel'; }, reduce ? 250 : 560);
     setTimeout(() => { ov.hidden = true; ov.classList.remove('run'); busy = false; }, reduce ? 620 : 1280);
   };
+  // Basılı tutarak açıldığında parmak kalkınca oluşan tıklama arka plana (karartmaya) düşüp pencereyi kapatmasın
+  const swallow = () => { const eat = (e) => { e.stopPropagation(); e.preventDefault(); }, off = () => removeEventListener('click', eat, true); addEventListener('click', eat, true); const up = () => { setTimeout(off, 350); removeEventListener('pointerup', up, true); removeEventListener('pointercancel', up, true); }; addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true); setTimeout(() => { off(); held = false; }, 6000); };
   const stop = () => { clearTimeout(timer); timer = null; el.classList.remove('holding'); };
-  el.addEventListener('pointerdown', (e) => { if (busy || (e.pointerType === 'mouse' && e.button)) return; held = false; el.classList.add('holding'); timer = setTimeout(() => { held = true; stop(); try { navigator.vibrate?.(10); } catch {} open(); }, 380); });
-  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, stop);
+  el.addEventListener('pointerdown', (e) => { if (busy || (e.pointerType === 'mouse' && e.button)) return; held = false; el.classList.add('holding'); try { el.setPointerCapture(e.pointerId); } catch {} clearTimeout(timer); timer = setTimeout(() => { held = true; stop(); try { navigator.vibrate?.(10); } catch {} open(); swallow(); }, 200); });
+  for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, stop);   // parmak hafif kaysa da basılı tutma iptal olmaz (touch-action:none)
   el.addEventListener('click', () => { if (held) { held = false; return; } open(); });   // kısa dokunuş da aynı seçenekleri açar
   el.addEventListener('contextmenu', (e) => e.preventDefault());
   sw.addEventListener('click', (e) => { const b = e.target.closest('[data-sw]'); if (!b) return; closeLayer(sw); const toY = b.dataset.sw === 'y'; if (toY !== isY()) setTimeout(() => go(toY), 180); });

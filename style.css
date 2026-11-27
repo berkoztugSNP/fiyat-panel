@@ -544,7 +544,7 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 @media (min-width:1181px){.grid.g12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}.grid.g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
 
 /* Mobil başlıkta logo: dokununca ya da basılı tutunca ekran değiştirici açılır (hesap değiştirici gibi) */
-.logo-hold{appearance:none;border:0;background:none;align-items:center;gap:6px;min-height:48px;padding:6px 8px;margin:-4px 0 -4px -8px;border-radius:14px;color:var(--text);cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform var(--d2) var(--spring),background var(--d2) var(--ease)}
+.logo-hold{appearance:none;border:0;background:none;align-items:center;gap:6px;min-height:48px;padding:6px 8px;margin:-4px 0 -4px -8px;border-radius:14px;color:var(--text);cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform var(--d2) var(--spring),background var(--d2) var(--ease)}
 .logo-hold .lg{display:block;height:27px;width:auto;pointer-events:none} .logo-hold .dn{width:15px;height:15px;transform:rotate(90deg);color:var(--text-2);pointer-events:none}
 .logo-hold.holding,.logo-hold:active{transform:scale(.95);background:var(--neutral-soft)}
 .sw-list>button{min-height:68px;gap:14px} .sw-list>*+*::before{left:70px}
