@@ -738,26 +738,27 @@ function badge() {
   const seen = localStorage.getItem('sp_seen') ?? '';
   setBadge(S.data.events.filter((e) => e.date > seen && e.brand !== S.ref).length);
 }
-// Mobil başlıktaki logo: basılı tutunca Fiyat Takip ↔ Yönetim Paneli geçiş animasyonu
+// Mobil başlıktaki logo: dokununca ya da basılı tutunca ekran değiştirici açılır; seçim animasyonla geçer
 function bindLogoHold() {
-  const el = $('#logoHold'), ov = $('#appShift'); if (!el || el.dataset.bound) return; el.dataset.bound = 1;
+  const el = $('#logoHold'), ov = $('#appShift'), sw = $('#appSw'); if (!el || el.dataset.bound) return; el.dataset.bound = 1;
   const isY = () => document.documentElement.dataset.app === 'y';
-  const label = () => { const t = isY() ? 'Fiyat Takip' : 'Yönetim Paneli'; el.setAttribute('aria-label', `Sina Pırlanta. ${t} ekranına geçmek için basılı tutun`); return t; };
-  let timer = null, busy = false; label(); addEventListener('hashchange', label);
-  const go = () => {
-    if (busy) return; busy = true; const toY = !isY(), r = el.getBoundingClientRect();
+  const mark = () => { el.setAttribute('aria-label', `Sina Pırlanta, ${isY() ? 'Yönetim Paneli' : 'Fiyat Takip'}. Ekran değiştir`); sw.querySelectorAll('[data-sw]').forEach((b) => { const on = (b.dataset.sw === 'y') === isY(); b.classList.toggle('on', on); b.setAttribute('aria-current', on); }); };
+  let timer = null, held = false, busy = false; mark(); addEventListener('hashchange', mark);
+  const open = () => { mark(); openLayer(sw); };
+  const go = (toY) => {
+    if (busy) return; busy = true; const r = el.getBoundingClientRect();
     ov.style.setProperty('--cx', r.left + r.width / 2 + 'px'); ov.style.setProperty('--cy', r.top + r.height / 2 + 'px');
     $('#appShiftLbl').textContent = toY ? 'Yönetim Paneli' : 'Fiyat Takip'; ov.className = 'app-shift ' + (toY ? 'to-y' : 'to-f'); ov.hidden = false; void ov.offsetWidth; ov.classList.add('run');
-    try { navigator.vibrate?.(12); } catch {}
     const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
     setTimeout(() => { location.hash = toY ? '#/y/genel' : '#/genel'; }, reduce ? 250 : 560);
     setTimeout(() => { ov.hidden = true; ov.classList.remove('run'); busy = false; }, reduce ? 620 : 1280);
   };
-  const cancel = (hint) => { if (!timer) return; clearTimeout(timer); timer = null; el.classList.remove('holding'); if (hint) { el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); toast(`${label()} için logoya basılı tutun`); } };
-  el.addEventListener('pointerdown', (e) => { if (busy || (e.pointerType === 'mouse' && e.button)) return; el.classList.add('holding'); timer = setTimeout(() => { timer = null; el.classList.remove('holding'); go(); }, 550); });
-  el.addEventListener('pointerup', () => cancel(true)); el.addEventListener('pointerleave', () => cancel(false)); el.addEventListener('pointercancel', () => cancel(false));
+  const stop = () => { clearTimeout(timer); timer = null; el.classList.remove('holding'); };
+  el.addEventListener('pointerdown', (e) => { if (busy || (e.pointerType === 'mouse' && e.button)) return; held = false; el.classList.add('holding'); timer = setTimeout(() => { held = true; stop(); try { navigator.vibrate?.(10); } catch {} open(); }, 380); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, stop);
+  el.addEventListener('click', () => { if (held) { held = false; return; } open(); });   // kısa dokunuş da aynı seçenekleri açar
   el.addEventListener('contextmenu', (e) => e.preventDefault());
-  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  sw.addEventListener('click', (e) => { const b = e.target.closest('[data-sw]'); if (!b) return; closeLayer(sw); const toY = b.dataset.sw === 'y'; if (toY !== isY()) setTimeout(() => go(toY), 180); });
 }
 let lastRoute = null;
 function route(keepScroll) {
@@ -778,7 +779,7 @@ function route(keepScroll) {
   const render = () => { S.charts.forEach((c) => c.destroy()); S.charts = []; pages[name]($('#view')); };
   if (changed) { swapView(render); if (keepScroll !== true) scrollTo(0, 0); } else render();
 }
-addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); closeLayer($('#moreY')); closeLayer($('#alerts')); route(); });
+addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); closeLayer($('#moreY')); closeLayer($('#alerts')); closeLayer($('#appSw')); route(); });
 
 (async () => {
   const s = JSON.parse(sessionStorage.getItem('sp_s') ?? 'null');

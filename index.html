@@ -107,7 +107,7 @@
   <div class="main">
     <header class="top">
       <div class="top-title">
-        <button class="logo-hold only-mobile" id="logoHold" type="button"><svg viewBox="0 0 172 48" aria-hidden="true"><use href="#i-logo"/></svg><i class="hold-bar" aria-hidden="true"></i></button>
+        <button class="logo-hold only-mobile" id="logoHold" type="button" aria-haspopup="dialog"><svg class="lg" viewBox="0 0 172 48" aria-hidden="true"><use href="#i-logo"/></svg><svg class="ic dn" aria-hidden="true"><use href="#i-chev"/></svg></button>
         <h1 id="pageTitle">Genel Bakış</h1>
         <div id="pageSub" class="t-sub"></div>
       </div>
@@ -152,7 +152,19 @@
   </div>
 </div>
 
-<!-- Uygulama geçişi (logoya basılı tutunca) -->
+<!-- Ekran değiştirici: logoya dokununca ya da basılı tutunca açılır -->
+<div id="appSw" class="sheet-root menu" hidden role="dialog" aria-modal="true" aria-label="Ekran değiştir">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="menu-list sw-list">
+      <button type="button" data-sw="f"><i class="sw-av"><svg class="ic"><use href="#i-compare"/></svg></i><span><b>Fiyat Takip</b><small>Rakip fiyatları ve kıyaslama</small></span><i class="sw-ck" aria-hidden="true"></i></button>
+      <button type="button" data-sw="y"><i class="sw-av"><svg class="ic"><use href="#i-wallet"/></svg></i><span><b>Yönetim Paneli</b><small>Siparişler, reklam ve giderler</small></span><i class="sw-ck" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</div>
+
+<!-- Uygulama geçişi animasyonu -->
 <div id="appShift" class="app-shift" hidden aria-hidden="true"><div class="as-bg"></div><div class="as-in"><svg viewBox="0 0 172 48"><use href="#i-logo"/></svg><span id="appShiftLbl"></span></div></div>
 
 <!-- Detay paneli: masaüstünde yan panel, mobilde alttan açılan sayfa -->

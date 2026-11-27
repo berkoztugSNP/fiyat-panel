@@ -135,7 +135,7 @@ export function initShell(opts) {
   document.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleSide(); } });
   $('#moreBtn').addEventListener('click', () => openLayer($('#more')));
   $('#logoutM').addEventListener('click', opts.logout);
-  dragToDismiss($('#drawer')); dragToDismiss($('#more')); dragToDismiss($('#alerts')); dragToDismiss($('#moreY'));
+  dragToDismiss($('#drawer')); dragToDismiss($('#more')); dragToDismiss($('#alerts')); dragToDismiss($('#moreY')); dragToDismiss($('#appSw'));
   initPalette(opts);
   // Üst çubuk: kaydırınca ince alt çizgi belirir
   const top = $('.top'); const onScroll = () => top.classList.toggle('stuck', scrollY > 6); addEventListener('scroll', onScroll, { passive: true }); onScroll();
