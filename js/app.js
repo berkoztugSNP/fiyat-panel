@@ -99,6 +99,7 @@ async function start(s) {
     openProduct: (id) => openProduct(id),
   });
   $('#alertBtn').onclick = openAlerts; alertBadge();
+  bindLogoHold();
   // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
   await YON.init({ user: s.user, data: S.data.yonetim, publish: S.data.publish, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
   banners(); route();
@@ -736,6 +737,27 @@ const ICONS = { genel: 'i-home', kiyas: 'i-compare', karsilastirma: 'i-layers', 
 function badge() {
   const seen = localStorage.getItem('sp_seen') ?? '';
   setBadge(S.data.events.filter((e) => e.date > seen && e.brand !== S.ref).length);
+}
+// Mobil başlıktaki logo: basılı tutunca Fiyat Takip ↔ Yönetim Paneli geçiş animasyonu
+function bindLogoHold() {
+  const el = $('#logoHold'), ov = $('#appShift'); if (!el || el.dataset.bound) return; el.dataset.bound = 1;
+  const isY = () => document.documentElement.dataset.app === 'y';
+  const label = () => { const t = isY() ? 'Fiyat Takip' : 'Yönetim Paneli'; el.setAttribute('aria-label', `Sina Pırlanta. ${t} ekranına geçmek için basılı tutun`); return t; };
+  let timer = null, busy = false; label(); addEventListener('hashchange', label);
+  const go = () => {
+    if (busy) return; busy = true; const toY = !isY(), r = el.getBoundingClientRect();
+    ov.style.setProperty('--cx', r.left + r.width / 2 + 'px'); ov.style.setProperty('--cy', r.top + r.height / 2 + 'px');
+    $('#appShiftLbl').textContent = toY ? 'Yönetim Paneli' : 'Fiyat Takip'; ov.className = 'app-shift ' + (toY ? 'to-y' : 'to-f'); ov.hidden = false; void ov.offsetWidth; ov.classList.add('run');
+    try { navigator.vibrate?.(12); } catch {}
+    const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+    setTimeout(() => { location.hash = toY ? '#/y/genel' : '#/genel'; }, reduce ? 250 : 560);
+    setTimeout(() => { ov.hidden = true; ov.classList.remove('run'); busy = false; }, reduce ? 620 : 1280);
+  };
+  const cancel = (hint) => { if (!timer) return; clearTimeout(timer); timer = null; el.classList.remove('holding'); if (hint) { el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge'); toast(`${label()} için logoya basılı tutun`); } };
+  el.addEventListener('pointerdown', (e) => { if (busy || (e.pointerType === 'mouse' && e.button)) return; el.classList.add('holding'); timer = setTimeout(() => { timer = null; el.classList.remove('holding'); go(); }, 550); });
+  el.addEventListener('pointerup', () => cancel(true)); el.addEventListener('pointerleave', () => cancel(false)); el.addEventListener('pointercancel', () => cancel(false));
+  el.addEventListener('contextmenu', (e) => e.preventDefault());
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
 }
 let lastRoute = null;
 function route(keepScroll) {

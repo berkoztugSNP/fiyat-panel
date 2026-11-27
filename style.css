@@ -446,10 +446,11 @@ textarea:focus-visible{outline:none;background:var(--surface);border-color:var(-
   :root{--fs-body:15px;--fs-foot:13px;--fs-caption:12px;--fs-large:30px;--fs-stat:26px}
   .app{display:block}
   .side{display:none}
-  .only-mobile{display:inline-grid} .app-go-m.only-mobile{display:block;padding:0 0 var(--s3)}
+  .only-mobile{display:inline-grid}
   .main{padding:0 16px calc(var(--tabbar-h) + 34px + env(safe-area-inset-bottom));max-width:none}
   .top{padding:calc(10px + env(safe-area-inset-top)) 16px 10px;margin:0 -16px var(--s3);align-items:flex-end}
-  .top-title h1{font-size:25px;letter-spacing:-.03em}
+  .top-title h1{font-size:var(--fs-foot);font-weight:500;letter-spacing:0;color:var(--text-2);margin-top:3px}
+  .logo-hold.only-mobile{display:block}
   .top .t-sub{display:none}
   .ref span{display:none} .ref select{max-width:112px;min-height:36px;font-size:14px;padding-left:10px}
   .icon-btn{width:40px;height:40px}
@@ -540,3 +541,25 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 
 /* Yönetim: 1:2 ve 2:1 ızgaralar (dar ekranda tek sütun) */
 @media (min-width:1181px){.grid.g12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}.grid.g21{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
+
+/* Mobil başlıkta logo: basılı tutunca Fiyat Takip ↔ Yönetim Paneli geçişi */
+.logo-hold{appearance:none;border:0;background:none;padding:2px 0 5px;margin:0;color:var(--text);position:relative;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform var(--d2) var(--spring),opacity var(--d2) var(--ease)}
+.logo-hold svg{display:block;height:27px;width:auto;pointer-events:none}
+.logo-hold .hold-bar{position:absolute;left:0;right:0;bottom:0;height:2.5px;border-radius:2px;background:var(--brand-deep);transform:scaleX(0);transform-origin:left;transition:transform .18s var(--ease)}
+.logo-hold.holding{transform:scale(.94)} .logo-hold.holding .hold-bar{transform:scaleX(1);transition:transform .55s linear}
+.logo-hold.nudge{animation:logoNudge .45s var(--ease)}
+@keyframes logoNudge{30%{transform:translateX(5px)}60%{transform:translateX(-3px)}100%{transform:none}}
+.app-shift{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;pointer-events:all;--cx:60px;--cy:44px}
+.app-shift[hidden]{display:none}
+.app-shift .as-bg{position:absolute;inset:0;background:radial-gradient(120% 90% at 30% 20%,color-mix(in srgb,var(--brand) 92%,#fff),var(--brand) 55%,color-mix(in srgb,var(--brand-deep) 55%,var(--brand)));clip-path:circle(0 at var(--cx) var(--cy))}
+.app-shift.to-f .as-bg{background:radial-gradient(120% 90% at 30% 20%,#2b2b30,#1d1d1f 55%,#0b0b0d)}
+.app-shift .as-in{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;color:#1d1d1f;opacity:0}
+.app-shift.to-f .as-in{color:#f5f5f7}
+.app-shift .as-in svg{width:min(62vw,300px);height:auto}
+.app-shift .as-in span{font:600 13px/1 var(--font);letter-spacing:.22em;text-transform:uppercase;opacity:.75}
+.app-shift.run .as-bg{animation:asReveal 1.25s cubic-bezier(.65,0,.2,1) forwards}
+.app-shift.run .as-in{animation:asLogo 1.25s cubic-bezier(.3,.9,.3,1) forwards}
+@keyframes asReveal{0%{clip-path:circle(0 at var(--cx) var(--cy));opacity:1}45%{clip-path:circle(150vmax at var(--cx) var(--cy));opacity:1}78%{clip-path:circle(150vmax at var(--cx) var(--cy));opacity:1}100%{clip-path:circle(150vmax at var(--cx) var(--cy));opacity:0}}
+@keyframes asLogo{0%,12%{opacity:0;transform:scale(.72) translateY(14px);filter:blur(6px)}42%{opacity:1;transform:none;filter:none}76%{opacity:1;transform:none}100%{opacity:0;transform:scale(1.06)}}
+@media (prefers-reduced-motion:reduce){.app-shift.run .as-bg{animation:asFade .6s ease forwards;clip-path:none}.app-shift.run .as-in{animation:asFade .6s ease forwards}.logo-hold.holding .hold-bar{transition:none}}
+@keyframes asFade{0%,100%{opacity:0}40%,70%{opacity:1}}
