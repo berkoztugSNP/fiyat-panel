@@ -353,7 +353,7 @@ textarea:focus-visible{outline:none;background:var(--surface);border-color:var(-
 }
 
 /* ---------- 5. Giriş ---------- */
-.login{min-height:100dvh;display:grid;place-items:center;padding:24px 16px;position:relative;overflow:hidden;background:var(--bg)}
+.login{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:24px 16px;position:relative;overflow:hidden;background:var(--bg)}
 .login-glow{position:absolute;inset:-20%;background:radial-gradient(38% 34% at 30% 26%,var(--brand),transparent 70%),radial-gradient(34% 30% at 74% 72%,color-mix(in srgb,var(--brand) 70%,#fff),transparent 72%);opacity:.75;filter:blur(40px);animation:drift 18s var(--ease) infinite alternate}
 :root[data-theme="dark"] .login-glow{opacity:.28}
 @media (prefers-color-scheme:dark){:root[data-theme="system"] .login-glow{opacity:.28}}
@@ -567,3 +567,6 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 @keyframes asLogo{0%,12%{opacity:0;transform:scale(.72) translateY(14px);filter:blur(6px)}42%{opacity:1;transform:none;filter:none}76%{opacity:1;transform:none}100%{opacity:0;transform:scale(1.06)}}
 @media (prefers-reduced-motion:reduce){.app-shift.run .as-bg{animation:asFade .6s ease forwards;clip-path:none}.app-shift.run .as-in{animation:asFade .6s ease forwards}}
 @keyframes asFade{0%,100%{opacity:0}40%,70%{opacity:1}}
+
+/* Giriş: şifreyi göster/gizle */
+.login-card .field{position:relative} .pw-eye{position:absolute;right:6px;bottom:5px;appearance:none;border:0;background:none;color:var(--accent);font:500 var(--fs-foot)/1 var(--font);min-height:34px;padding:0 10px;border-radius:8px;cursor:pointer} #lp{padding-right:76px}

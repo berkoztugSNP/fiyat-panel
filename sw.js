@@ -1,5 +1,5 @@
 // Uygulama kabuğu önbelleği. Şifreli veri paketi ve kullanıcı dosyası ASLA önbelleğe alınmaz: her zaman ağdan gelir.
-const CACHE = 'fiyat-takip-v6';
+const CACHE = 'fiyat-takip-v7';
 const NEVER = /(data\.enc|users\.json)(\?|$)/;
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil((async () => {

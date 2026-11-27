@@ -45,11 +45,14 @@ function showLogin(msg) {
   const e = $('#loginErr'); e.hidden = !msg; e.textContent = msg ?? '';
   if (msg) { const c = $('.login-card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); $('#lp').focus(); }
 }
+$('#pwEye').onclick = (e) => { const i = $('#lp'), show = i.type === 'password'; i.type = show ? 'text' : 'password'; e.target.textContent = show ? 'Gizle' : 'Göster'; e.target.setAttribute('aria-pressed', show); i.focus(); };
 $('#loginForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const btn = $('#loginBtn'); btn.disabled = true; btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true'); $('#loginErr').hidden = true;
   try {
-    const s = await unlock($('#lu').value, $('#lp').value);
+    // Telefon klavyeleri sona boşluk ekleyebilir ya da görünmez karakter bırakabilir; şifreler kayıtta kırpıldığı için burada da kırpılır
+    const pw = $('#lp').value.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/[\u2018\u2019]/g, "'").trim();
+    const s = await unlock($('#lu').value.replace(/[\u200B-\u200D\uFEFF]/g, ''), pw);
     sessionStorage.setItem('sp_s', JSON.stringify(s));
     $('#lp').value = '';
     await start(s);
