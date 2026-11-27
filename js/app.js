@@ -1,5 +1,7 @@
 import { buildSegments, equivalents, versusRef, median, bucketLabel, CT_BUCKETS, segKey, norm, classify, compareNote, clarityRank, colorRank } from './core.js';
 import { parseMerchantFeed } from './feed.js';
+import { parseSavedPage } from './parse.js';
+const MANUAL = 'blue'; // ürünleri kayıtlı sayfalardan elle yüklenen marka
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -63,6 +65,17 @@ async function start(s) {
     const fb = Object.keys(S.data.brands).find((b) => S.data.brands[b].ref);
     if (lf && fb) { if (!S.data.brands[fb].feedAt || lf.uploadedAt > S.data.brands[fb].feedAt) applyFeed(fb, lf); else localStorage.removeItem('sp_feed'); }
   } catch {}
+  S.localManual = 0;
+  try {
+    const lm = JSON.parse(localStorage.getItem('sp_manual') ?? 'null');
+    if (lm?.items && S.data.brands[MANUAL]) {
+      // sunucuda daha yeni kaydı olan ürünler yerel depodan düşer
+      const srv = new Map(S.data.products.filter((p) => p.brand === MANUAL).map((p) => [p.code, p.capturedAt ?? '']));
+      for (const [c, it] of Object.entries(lm.items)) if ((srv.get(c) ?? '') >= it.capturedAt) delete lm.items[c];
+      const left = Object.values(lm.items);
+      if (left.length) { applyManual(left); S.localManual = left.length; localStorage.setItem('sp_manual', JSON.stringify(lm)); } else localStorage.removeItem('sp_manual');
+    }
+  } catch {}
   reindex();
   const withData = Object.keys(S.data.brands).filter((b) => brand(b).count > 0);
   const natural = Object.keys(S.data.brands).find((b) => brand(b).ref);
@@ -99,6 +112,33 @@ function feedDiff(b, products) {
   for (const p of products) { codes.add(p.code); const o = prev.get(p.code); if (!o) added++; else if (o.price !== p.price) changed++; }
   return { changed, added, removed: [...prev.keys()].filter((c) => !codes.has(c)).length, had: prev.size };
 }
+// Elle yüklenen ürünleri (kayıtlı sayfalardan okunan) bellekteki veriye işler
+function applyManual(items) {
+  const b = MANUAL, prev = new Map(S.data.products.filter((p) => p.brand === b).map((p) => [p.code, p]));
+  for (const { capturedAt, ...p } of items) {
+    const o = prev.get(p.code), day = (capturedAt ?? new Date().toISOString()).slice(0, 10);
+    const hist = o && o.price !== p.price ? [...(o.hist ?? [[o.first, o.price]]), [day, p.price]] : o?.hist;
+    prev.set(p.code, { id: `${b}:${p.code}`, brand: b, code: p.code, name: p.name, url: p.url, img: p.image, price: p.price, list: p.listPrice ?? null, stock: p.inStock, active: true, ayar: p.ayar, metalColor: p.metalColor, gram: p.gram, stones: p.stones, first: o?.first ?? day, last: day, hist, capturedAt, ...classify(p) });
+  }
+  S.data.products = S.data.products.filter((p) => p.brand !== b).concat([...prev.values()]);
+  const act = [...prev.values()].filter((p) => p.active).length;
+  Object.assign(S.data.brands[b], { count: act, status: 'ok', error: null, source: 'manual', lastOk: new Date().toISOString().slice(0, 10) });
+}
+async function ghFile(path) {
+  const { repo, token, branch } = S.data.publish;
+  const api = `https://api.github.com/repos/${repo}/contents/${path}`, h = { authorization: 'Bearer ' + token, accept: 'application/vnd.github+json' };
+  const cur = await fetch(`${api}?ref=${encodeURIComponent(branch)}`, { headers: { ...h, accept: 'application/vnd.github.raw+json' } });
+  const meta = await fetch(`${api}?ref=${encodeURIComponent(branch)}`, { headers: h });
+  return { api, h, branch, text: cur.ok ? await cur.text() : null, sha: meta.ok ? (await meta.json()).sha : undefined };
+}
+const b64utf8 = (text) => { const bytes = new TextEncoder().encode(text); let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+async function publishManual(items, user) {
+  const f = await ghFile('data/manual/blue.json');
+  const doc = f.text ? JSON.parse(f.text) : { items: {} };
+  for (const it of items) doc.items[it.code] = it;
+  const r = await fetch(f.api, { method: 'PUT', headers: f.h, body: JSON.stringify({ message: `Blue Diamond: ${items.length} ürün sayfası yüklendi (${user})`, content: b64utf8(JSON.stringify(doc)), branch: f.branch, sha: f.sha }) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
 async function publishFeed(text, user) {
   const { repo, token, branch } = S.data.publish, path = 'data/manual/sina.xml';
   const api = `https://api.github.com/repos/${repo}/contents/${path}`, h = { authorization: 'Bearer ' + token, accept: 'application/vnd.github+json' };
@@ -115,6 +155,7 @@ function banners() {
     else if (i.status === 'error') out.push(`<div class="banner"><b>${esc(i.name)} son güncellemede hata verdi:</b> ${esc(i.error)}. ${i.lastOk ? 'Gösterilen veriler ' + dstr(i.lastOk) + ' tarihlidir.' : ''}</div>`);
   }
   if (S.natural && S.ref && S.ref !== S.natural && !(brand(S.natural).count > 0)) out.push(`<div class="banner">${esc(brand(S.natural).name)} ürün verisi gelene kadar karşılaştırmalar geçici olarak <b>${esc(brand(S.ref).name)}</b> referans alınarak gösteriliyor. Referansı sağ üstten değiştirebilirsiniz.</div>`);
+  if (S.localManual) out.push(`<div class="banner">${esc(brand(MANUAL).name)} için yüklediğiniz ${S.localManual} ürün şimdilik yalnızca bu tarayıcıda görünüyor.</div>`);
   const nb = S.natural && brand(S.natural);
   if (S.localFeed && !S.localFeed.published) out.push(`<div class="banner">${esc(nb.name)} verisi bu tarayıcıda yüklediğiniz XML'den geliyor (${new Date(S.localFeed.at).toLocaleString('tr-TR')}). Diğer kullanıcılar bunu henüz görmüyor.</div>`);
   else if (S.localFeed) out.push(`<div class="banner">Yüklediğiniz XML yayınlandı; diğer kullanıcılara birkaç dakika içinde yansır.</div>`);
@@ -409,10 +450,13 @@ const pages = {
       <div id="feedOut" style="margin-top:12px"></div></div>` : ''}
     <div class="card"><div class="card-head"><div><h2>Fiyatları şimdi güncelle</h2><p class="muted small">DDiamond, Lizay ve Sina her gün; Zen ve Atasay iki günde bir otomatik güncellenir. Beklemeden taratmak için düğmeyi kullanın; sonuç yaklaşık 5 dakikada panele yansır.</p></div>
       <button class="btn primary" id="refreshNow"${S.data.publish ? '' : ' disabled'}>Şimdi güncelle</button></div><div id="refreshOut" class="small muted">${S.data.publish ? 'Bu düğme DDiamond ve Sina verisini yeniler. Zen, erişim kısıtı nedeniyle yalnızca zamanlanmış görevle güncellenir.' : 'Bu düğme henüz kurulmadı: depoya UPLOAD_TOKEN erişim anahtarı eklenince etkinleşir.'}</div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Marka</th><th>Durum</th><th class="r">Aktif ürün</th><th>Son başarılı güncelleme</th><th>Not</th></tr></thead><tbody>${Object.entries(S.data.brands).map(([b, i]) => `<tr><td>${chip(b)} ${esc(i.name)}</td><td><b>${i.status === 'ok' ? '✓' : '⚠'} ${ST[i.status] ?? i.status}</b></td><td class="r num">${i.count.toLocaleString('tr-TR')}</td><td>${i.lastOk ? dstr(i.lastOk) : '—'}</td><td class="small muted">${i.source === 'xml' ? 'Kaynak: yüklenen XML' : 'Kaynak: site taraması'}${i.error ? ' · ' + esc(i.error) : ''}</td></tr>`).join('')}</tbody></table></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Marka</th><th>Durum</th><th class="r">Aktif ürün</th><th>Son başarılı güncelleme</th><th>Not</th></tr></thead><tbody>${Object.entries(S.data.brands).map(([b, i]) => `<tr><td>${chip(b)} ${esc(i.name)}</td><td><b>${i.status === 'ok' ? '✓' : '⚠'} ${ST[i.status] ?? i.status}</b></td><td class="r num">${i.count.toLocaleString('tr-TR')}</td><td>${i.lastOk ? dstr(i.lastOk) : '—'}</td><td class="small muted">${i.source === 'xml' ? 'Kaynak: yüklenen XML' : i.source === 'manual' || b === MANUAL ? 'Kaynak: yüklenen ürün sayfaları' : 'Kaynak: site taraması'}${i.error ? ' · ' + esc(i.error) : ''}</td></tr>`).join('')}</tbody></table></div>
     ${blocked.length ? `<div class="card"><h2>Engellenen siteler için ne yapılmalı?</h2><p>Bu siteler Cloudflare bot korumasıyla otomatik istekleri reddediyor. Koruma bilerek konulduğu için panel bunu aşmaya çalışmaz.</p><p>Günlük güncellemenin çalıştığı sunucunun IP'si engelliyse o markadan veri alınamaz; farklı bir çalıştırma ortamı veya izinli bir veri kaynağı gerekir. Eski veriler korunur.</p></div>` : ''}
     <div class="card"><div class="card-head"><div><h2>Güncelleme geçmişi</h2><p class="muted small">Veriler her gün otomatik taranır. Son veri paketi: ${new Date(S.data.generatedAt).toLocaleString('tr-TR')}</p></div></div>
-    <div class="tbl-wrap"><table><thead><tr><th>Tarih</th>${Object.keys(S.data.brands).map((b) => `<th>${esc(brand(b).short)}</th>`).join('')}</tr></thead><tbody>${[...S.data.runs].reverse().slice(0, 30).map((r) => `<tr><td class="num">${dstr(r.date)}</td>${Object.keys(S.data.brands).map((b) => { const x = r.brands[b]; return `<td class="small">${!x ? '—' : x.status !== 'ok' ? '⚠ ' + (ST[x.status] ?? x.status) : `✓ ${x.fetched.toLocaleString('tr-TR')} ürün · ${x.priceChanges} fiyat değişimi · ${x.added} yeni · ${x.removed} kalkan`}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>`;    const rb = $('#refreshNow');
+    <div class="tbl-wrap"><table><thead><tr><th>Tarih</th>${Object.keys(S.data.brands).map((b) => `<th>${esc(brand(b).short)}</th>`).join('')}</tr></thead><tbody>${[...S.data.runs].reverse().slice(0, 30).map((r) => `<tr><td class="num">${dstr(r.date)}</td>${Object.keys(S.data.brands).map((b) => { const x = r.brands[b]; return `<td class="small">${!x ? '—' : x.status !== 'ok' ? '⚠ ' + (ST[x.status] ?? x.status) : `✓ ${x.fetched.toLocaleString('tr-TR')} ürün · ${x.priceChanges} fiyat değişimi · ${x.added} yeni · ${x.removed} kalkan`}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><div class="card-head"><div><h2>${esc(brand(MANUAL).name)} ürün sayfaları</h2><p class="muted small">${esc(brand(MANUAL).name)} otomatik taramaya izin vermediği için ürünleri kayıtlı sayfalardan okunur. Ürün sayfasını tarayıcıda açın, <b>Ctrl+S</b> ile "Web Sayfası, Yalnızca HTML" olarak kaydedin ve dosyaları buraya yükleyin (birden çok dosya seçebilirsiniz). Fiyatı güncellemek için aynı sayfayı yeniden kaydedip yükleyin. Şu an ${brand(MANUAL).count.toLocaleString('tr-TR')} ürün kayıtlı.</p></div></div>
+      <div class="filters"><div><label for="manFile">Kaydedilmiş ürün sayfaları (.html)</label><input id="manFile" type="file" accept=".html,.htm,text/html" multiple></div></div>
+      <div id="manOut" style="margin-top:12px"></div></div>`;    const rb = $('#refreshNow');
     if (rb) rb.onclick = async () => {
       rb.disabled = true; rb.textContent = 'Başlatılıyor…';
       try {
@@ -421,6 +465,30 @@ const pages = {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         $('#refreshOut').innerHTML = '<b>✓ Güncelleme başlatıldı.</b> Yaklaşık 5 dakika sonra sayfayı yenileyin.'; rb.textContent = 'Başlatıldı';
       } catch (e) { $('#refreshOut').innerHTML = `<span class="form-err">Güncelleme başlatılamadı (${esc(e.message)}). Erişim anahtarının "Actions: Read and write" yetkisi olduğunu kontrol edin.</span>`; rb.disabled = false; rb.textContent = 'Şimdi güncelle'; }
+    };
+    const mf = $('#manFile');
+    if (mf) mf.onchange = async () => {
+      const out = $('#manOut'), files = [...mf.files]; if (!files.length) return;
+      out.innerHTML = '<span class="muted">Dosyalar okunuyor…</span>';
+      const ok = [], bad = [], now = new Date().toISOString();
+      for (const f of files) {
+        try { const p = parseSavedPage(await f.text()); if (p && p.price && /bluediamond\.com\.tr/i.test(p.url)) ok.push({ ...p, capturedAt: new Date(f.lastModified || Date.now()).toISOString() > now ? now : new Date(f.lastModified || Date.now()).toISOString() }); else bad.push(f.name + (p && !/bluediamond\.com\.tr/i.test(p.url ?? '') ? ' (Blue Diamond sayfası değil)' : '')); } catch { bad.push(f.name); }
+      }
+      const uniq = [...new Map(ok.map((p) => [p.code, p])).values()];
+      const noSpec = uniq.filter((p) => !p.stones.length).length;
+      out.innerHTML = `${uniq.length ? `<div class="tbl-wrap" style="margin-bottom:10px"><table><thead><tr><th>Ürün</th><th class="r">Karat</th><th>Renk / Berraklık</th><th>Ayar</th><th class="r">Fiyat</th></tr></thead><tbody>${uniq.slice(0, 50).map((p) => { const c = classify(p); return `<tr><td>${esc(p.name)} <span class="muted small">${esc(p.code)}</span></td><td class="r num">${c.ct != null ? c.ct.toLocaleString('tr-TR') : '—'}</td><td>${esc(c.color ?? '—')} / ${esc(c.clarity ?? '—')}</td><td>${p.ayar ?? '—'}</td><td class="r num"><b>${tl(p.price)}</b></td></tr>`; }).join('')}</tbody></table></div>` : ''}
+        <p style="margin:0 0 10px"><b>${uniq.length} ürün okundu.</b>${bad.length ? ` <span class="form-err" style="display:inline-block">${bad.length} dosya okunamadı: ${esc(bad.slice(0, 5).join(', '))}${bad.length > 5 ? '…' : ''}. Sayfayı "Yalnızca HTML" olarak kaydettiğinizden emin olun.</span>` : ''}${noSpec ? ` <span class="muted">${noSpec} üründe taş tablosu bulunamadı.</span>` : ''}</p>
+        ${uniq.length ? `<button class="btn primary" id="manApply">${S.data.publish ? 'Ürünleri ekle ve herkese yayınla' : 'Ürünleri bu tarayıcıda ekle'}</button>${S.data.publish ? '' : '<p class="small muted" style="margin:8px 0 0">Herkese yayınlama henüz kurulmadı (UPLOAD_TOKEN); ürünler yalnızca bu tarayıcıda görünür.</p>'}` : ''}`;
+      if (uniq.length) $('#manApply').onclick = async () => {
+        const btn = $('#manApply'); btn.disabled = true; btn.textContent = 'Ekleniyor…';
+        let pubErr = null, published = false;
+        if (S.data.publish) { try { await publishManual(uniq, S.user); published = true; } catch (e) { pubErr = e.message; } }
+        applyManual(uniq); reindex();
+        if (!published) { try { const lm = JSON.parse(localStorage.getItem('sp_manual') ?? '{"items":{}}'); for (const it of uniq) lm.items[it.code] = it; localStorage.setItem('sp_manual', JSON.stringify(lm)); S.localManual = Object.keys(lm.items).length; } catch {} }
+        const sel = $('#refSel'), cur = sel.value; sel.innerHTML = Object.keys(S.data.brands).filter((x) => brand(x).count > 0).map((x) => `<option value="${x}">${esc(brand(x).name)}</option>`).join(''); sel.value = cur;
+        route();
+        $('#manOut').innerHTML = pubErr ? `<div class="form-err">Ürünler bu tarayıcıda eklendi ancak herkese yayınlanamadı (${esc(pubErr)}).</div>` : `<p style="margin:0"><b>✓ ${uniq.length} ürün eklendi.</b> ${published ? 'Diğer kullanıcılara birkaç dakika içinde yansır.' : ''}</p>`;
+      };
     };
     const ff = $('#feedFile');
     if (ff) ff.onchange = async () => {
