@@ -500,7 +500,7 @@ textarea:focus-visible{outline:none;background:var(--surface);border-color:var(-
   table.stack td.wide{flex-direction:column;align-items:stretch;text-align:left;gap:6px}
   table.stack td.r .num,table.stack td.num{white-space:normal}
   .cmp .tbl-wrap{padding:10px 10px 2px}
-  .cmp-head{flex-wrap:wrap} .cmp-head .p{margin-left:66px;text-align:left;width:100%;margin-top:-4px}
+  .cmp-head{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 12px} .cmp-head .thumb{width:52px;height:52px;border-radius:10px} .cmp-head .t{font-size:15px;line-height:1.25} .cmp-head .small{font-size:var(--fs-caption);line-height:1.5;margin-top:2px} .cmp-head .p{margin:0;font-size:15px}
   .pgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
   .pbody{padding:10px 12px 12px} .pcard:hover{transform:none;box-shadow:none}
   .ev{grid-template-columns:44px minmax(0,1fr)} .ev-r{grid-column:2;text-align:left;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
@@ -603,3 +603,18 @@ img.fadein{opacity:0;transition:opacity var(--d3) var(--ease)} img.fadein.ok{opa
 .cmp-box input[type=date]{flex:1;min-width:0;min-height:36px;background:var(--surface);font-size:var(--fs-foot);padding:0 8px}
 .cmp-vs{align-self:center;color:var(--text-3);font-size:18px} .cmp-pick>.btn{align-self:center}
 @media (max-width:760px){.cmp-vs{display:none}.cmp-box{flex-basis:100%}}
+
+/* Model Kıyaslama, telefon: rakip ürünler tablo yerine sıkı satırlar */
+.krows{display:none}
+@media (max-width:760px){
+  .krows{display:block} .krows+.tbl-wrap{display:none}
+  .krow{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;padding:10px 12px;border-top:1px solid var(--hairline);cursor:pointer;align-items:start}
+  .krow:active{background:var(--neutral-soft)}
+  .krow>img,.krow>.ph,.krow>:first-child{width:52px;height:52px;border-radius:10px;object-fit:cover}
+  .kr-main{min-width:0;display:flex;flex-direction:column;gap:3px}
+  .kr-top{display:flex;align-items:center;gap:8px;min-width:0} .kr-top b{margin-left:auto;font-size:15px;font-weight:600;white-space:nowrap} .kr-top .pos{font-size:var(--fs-foot);font-weight:600;white-space:nowrap}
+  .kr-name{font-size:var(--fs-foot);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kr-spec{display:flex;flex-wrap:wrap;gap:2px 0;font-size:var(--fs-caption);color:var(--text-2)} .kr-spec span+span::before{content:"·";margin:0 6px;color:var(--text-3)} .kr-spec i{font-style:normal;color:var(--text-3)}
+  .kr-verdict{font-size:var(--fs-caption);font-weight:600;line-height:1.3;color:var(--text-2)} .kr-verdict.risk{color:var(--neg)} .kr-verdict.good{color:var(--pos)}
+  .kr-notes{font-size:var(--fs-caption);color:var(--text-3);line-height:1.3;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;overflow:hidden}
+}
