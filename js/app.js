@@ -1,6 +1,7 @@
 import { buildSegments, equivalents, versusRef, median, bucketLabel, CT_BUCKETS, segKey, norm, classify, compareNote, clarityRank, colorRank } from './core.js';
 import { parseMerchantFeed } from './feed.js';
 import { parseSavedPage } from './parse.js';
+import { initShell, toast, openLayer, closeLayer, updateNav, setBadge, swapView, cssv, isDark } from './ui.js';
 const MANUAL = 'blue'; // ürünleri kayıtlı sayfalardan elle yüklenen marka
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -9,8 +10,8 @@ const tl = (n) => (n == null ? '—' : Math.round(n).toLocaleString('tr-TR') + '
 const pct = (n, d = 1) => (n == null ? '—' : (n > 0 ? '+' : '') + n.toLocaleString('tr-TR', { maximumFractionDigits: d, minimumFractionDigits: d }) + '%');
 const dstr = (d) => { const [y, m, g] = d.split('-'); return `${g}.${m}.${y}`; };
 const b64d = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-const PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#f6f1f3"/><path d="M13 16h14l-7 11z" fill="none" stroke="#cdbfc5" stroke-width="1.5"/></svg>');
-const img = (p, cls = '') => `<img class="${cls}" src="${esc(p.img || PLACEHOLDER)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${PLACEHOLDER}'">`;
+const PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><path d="M14 15.5h12l3 4-9 9.5-9-9.5zM11 19.5h18" fill="none" stroke="#b9b9bf" stroke-width="1.1" stroke-linejoin="round"/></svg>');
+const img = (p, cls = '') => `<img class="${cls} fadein" src="${esc(p.img || PLACEHOLDER)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${PLACEHOLDER}'">`;
 
 const S = { data: null, products: [], byId: new Map(), segments: null, ref: null, user: '', charts: [] };
 const brand = (b) => S.data.brands[b];
@@ -41,10 +42,11 @@ async function loadData(keyB64) {
 function showLogin(msg) {
   $('#app').hidden = true; $('#login').hidden = false;
   const e = $('#loginErr'); e.hidden = !msg; e.textContent = msg ?? '';
+  if (msg) { const c = $('.login-card'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); $('#lp').focus(); }
 }
 $('#loginForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const btn = $('#loginBtn'); btn.disabled = true; btn.textContent = 'Giriş yapılıyor…'; $('#loginErr').hidden = true;
+  const btn = $('#loginBtn'); btn.disabled = true; btn.classList.add('busy'); btn.setAttribute('aria-busy', 'true'); $('#loginErr').hidden = true;
   try {
     const s = await unlock($('#lu').value, $('#lp').value);
     sessionStorage.setItem('sp_s', JSON.stringify(s));
@@ -52,9 +54,10 @@ $('#loginForm').addEventListener('submit', async (ev) => {
     await start(s);
   } catch (e) {
     showLogin(e.message === 'auth' ? 'Kullanıcı adı veya şifre hatalı. Kontrol edip tekrar deneyin.' : 'Veriler yüklenemedi. Bağlantınızı kontrol edip tekrar deneyin.');
-  } finally { btn.disabled = false; btn.textContent = 'Giriş yap'; }
+  } finally { btn.disabled = false; btn.classList.remove('busy'); btn.removeAttribute('aria-busy'); }
 });
-$('#logout').addEventListener('click', () => { sessionStorage.removeItem('sp_s'); location.hash = ''; location.reload(); });
+const logout = () => { sessionStorage.removeItem('sp_s'); location.hash = ''; location.reload(); };
+$('#logout').addEventListener('click', logout);
 
 async function start(s) {
   S.data = await loadData(s.key);
@@ -86,8 +89,14 @@ async function start(s) {
   sel.innerHTML = withData.map((b) => `<option value="${b}">${esc(brand(b).name)}</option>`).join('');
   sel.value = S.ref ?? '';
   sel.onchange = () => { S.ref = sel.value; localStorage.setItem('sp_ref', S.ref); S.evCache = null; route(); };
-  $('#who').textContent = 'Oturum: ' + s.user;
+  $('#who').textContent = 'Oturum: ' + s.user; $('#whoM').textContent = 'Oturum: ' + s.user;
   $('#login').hidden = true; $('#app').hidden = false;
+  initShell({
+    logout, onTheme: () => { if (S.data) route(true); },
+    pages: Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })),
+    searchProducts: (q) => { const ws = q.split(' ').filter(Boolean); return S.products.filter((p) => ws.every((w) => (p._n ??= norm(p.name + ' ' + p.code)).includes(norm(w)))).slice(0, 8).map((p) => ({ id: p.id, title: p.name, meta: `${brand(p.brand).short} · ${tl(p.price)}`, thumb: img(p, 'thumb') })); },
+    openProduct: (id) => openProduct(id),
+  });
   banners(); route();
 }
 
@@ -224,11 +233,15 @@ function chart(el, cfg) {
   const c = new Chart(el, cfg); S.charts.push(c); return c;
 }
 Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-Chart.defaults.color = '#6d6468';
+function themeCharts() {
+  Chart.defaults.color = cssv('--text-2'); Chart.defaults.borderColor = cssv('--hairline');
+  Object.assign(Chart.defaults.plugins.tooltip, { backgroundColor: isDark() ? '#2a2a2f' : '#1d1d1f', titleColor: '#fff', bodyColor: '#fff', padding: 11, cornerRadius: 11, boxPadding: 5, usePointStyle: true, titleFont: { weight: '600' }, displayColors: true });
+  Chart.defaults.font.size = 12;
+}
 Chart.defaults.plugins.legend.display = false;
 const legend = (bs) => `<div class="legend">${bs.map((b) => `<span><i class="dot" style="background:${SERIES[b][0]}"></i>${esc(brand(b).name)}</span>`).join('')}</div>`;
-const dsFor = (b, data, type = 'bar') => ({ label: brand(b).name, data, backgroundColor: SERIES[b][0], borderColor: SERIES[b][1], borderWidth: type === 'bar' ? 1 : 2, borderRadius: 4, pointRadius: 4, pointBackgroundColor: SERIES[b][0], pointBorderColor: SERIES[b][1], tension: 0.25, spanGaps: true, maxBarThickness: 26 });
-const moneyAxis = { ticks: { callback: (v) => (v >= 1000 ? (v / 1000).toLocaleString('tr-TR') + ' B' : v) }, grid: { color: '#f1eaed' }, border: { display: false }, title: { display: true, text: 'Medyan fiyat (TL)' } };
+const dsFor = (b, data, type = 'bar') => ({ label: brand(b).name, data, backgroundColor: SERIES[b][0], borderColor: SERIES[b][1], borderWidth: type === 'bar' ? 1 : 2, borderRadius: 6, borderSkipped: false, pointRadius: 3.5, pointHoverRadius: 6, pointBackgroundColor: SERIES[b][0], pointBorderColor: SERIES[b][1], tension: 0.25, spanGaps: true, maxBarThickness: 26 });
+const moneyAxis = { ticks: { callback: (v) => (v >= 1000 ? (v / 1000).toLocaleString('tr-TR') + ' B' : v) }, grid: { color: () => cssv('--hairline') }, border: { display: false }, title: { display: true, text: 'Medyan fiyat (TL)' } };
 const tipCfg = { mode: 'index', intersect: false, callbacks: { label: (c) => ` ${c.dataset.label}: ${tl(c.parsed.y)}${c.dataset.ns?.[c.dataIndex] ? ' · ' + c.dataset.ns[c.dataIndex] + ' ürün' : ''}` } };
 
 /* ---------- Sayfalar ---------- */
@@ -343,9 +356,9 @@ const pages = {
       const numRank = (x) => (x == null ? null : +x);
       $('#kOut').innerHTML = rows.length ? `<div class="grid g4" style="margin-bottom:16px">
           <div class="card kpi"><div class="l">Muadili bulunan ürünümüz</div><div class="v num">${rows.length.toLocaleString('tr-TR')}</div><div class="s">${all.length.toLocaleString('tr-TR')} rakip eşleşmesi</div></div>
-          <div class="card kpi"><div class="l">Rakip avantajlı</div><div class="v num" style="color:var(--up)">${cnt('risk')}</div><div class="s">Rakip ucuz ve özellikleri benzer ya da daha yüksek</div></div>
-          <div class="card kpi"><div class="l">Biz avantajlıyız</div><div class="v num" style="color:var(--down)">${cnt('good')}</div><div class="s">Biz ucuzuz ya da özelliklerimiz daha yüksek</div></div>
-          <div class="card kpi"><div class="l">Dengeli</div><div class="v num">${cnt('eq')}</div><div class="s">Fiyat farkı özelliklerle açıklanıyor</div></div></div>
+          <div class="card kpi"><div class="l">Rakip avantajlı</div><div class="v num" style="color:var(--up)">${cnt('risk').toLocaleString('tr-TR')}</div><div class="s">Rakip ucuz ve özellikleri benzer ya da daha yüksek</div></div>
+          <div class="card kpi"><div class="l">Biz avantajlıyız</div><div class="v num" style="color:var(--down)">${cnt('good').toLocaleString('tr-TR')}</div><div class="s">Biz ucuzuz ya da özelliklerimiz daha yüksek</div></div>
+          <div class="card kpi"><div class="l">Dengeli</div><div class="v num">${cnt('eq').toLocaleString('tr-TR')}</div><div class="s">Fiyat farkı özelliklerle açıklanıyor</div></div></div>
         <div style="display:flex;flex-direction:column;gap:14px">${rows.slice(f.page * N, f.page * N + N).map(({ p, eq }) => `<div class="cmp">
           <div class="cmp-head" data-pid="${esc(p.id)}" tabindex="0" role="button">${img(p, 'thumb')}<div><div class="t">${esc(p.name)}</div><div class="small muted">${chip(p.brand)} ${esc(p.code)} · ${p.ct != null ? p.ct.toLocaleString('tr-TR') + ' ct' : '—'} · ${esc(p.color ?? '—')} / ${esc(p.clarity ?? '—')} · ${p.ayar ? p.ayar + ' ayar' : '—'} · ${p.gram ? p.gram.toLocaleString('tr-TR') + ' gr' : 'gram belirtilmemiş'}</div></div><div class="p num">${tl(p.price)}</div></div>
           <div class="tbl-wrap"><table><thead><tr><th></th><th>Rakip ürün</th><th class="r">Karat</th><th>Renk</th><th>Berraklık</th><th class="r">Gram</th><th class="r">Fiyat</th><th class="r">Fark</th><th>Yorum</th></tr></thead><tbody>${eq.map(({ p: o, n }) => `<tr class="click" data-pid="${esc(o.id)}" tabindex="0"><td>${img(o, 'thumb')}</td><td>${chip(o.brand)} ${esc(o.name)}</td>
@@ -436,7 +449,7 @@ const pages = {
     $('#printKiyas').onclick = () => printKiyas($('#r3c').value, $('#r3m').value, $('#r3e').value === '1');
     view.querySelectorAll('[data-rep]').forEach((b) => (b.onclick = async () => {
       const old = b.textContent; b.disabled = true; b.textContent = 'Hazırlanıyor…';
-      try { await report(b.dataset.rep, b); } catch (e) { console.error(e); alert('Rapor oluşturulamadı. Sayfayı yenileyip tekrar deneyin.'); }
+      try { await report(b.dataset.rep, b); } catch (e) { console.error(e); toast('Rapor oluşturulamadı. Sayfayı yenileyip tekrar deneyin.', 'err'); }
       b.disabled = false; b.textContent = old;
     }));
   },
@@ -448,7 +461,7 @@ const pages = {
     view.innerHTML = `${fb ? `<div class="card"><div class="card-head"><div><h2>${esc(fi.name)} ürün XML'i</h2><p class="muted small">Sitemizi taramak yerine ürünlerimiz bu dosyadan okunur (Google Merchant biçimi). ${fi.feedAt ? `Son yükleme: <b>${new Date(fi.feedAt).toLocaleString('tr-TR')}</b>${fi.feedBy ? ' · ' + esc(fi.feedBy) : ''} · ${fi.count.toLocaleString('tr-TR')} ürün.` : 'Henüz dosya yüklenmedi.'}</p></div></div>
       <div class="filters"><div><label for="feedFile">XML dosyası</label><input id="feedFile" type="file" accept=".xml,text/xml,application/xml"></div></div>
       <div id="feedOut" style="margin-top:12px"></div></div>` : ''}
-    <div class="card"><div class="card-head"><div><h2>Fiyatları şimdi güncelle</h2><p class="muted small">DDiamond, Lizay ve Sina her gün; Zen ve Atasay iki günde bir otomatik güncellenir. Beklemeden taratmak için düğmeyi kullanın; sonuç yaklaşık 5 dakikada panele yansır.</p></div>
+    <div class="card"><div class="card-head"><div><h2>Fiyatları şimdi güncelle</h2><p class="muted small">DDiamond, Lizay ve Sina her gün; Zen ve Atasay iki günde bir otomatik güncellenir. Beklemeden taratmak için düğmeyi kullanın; sonuç yaklaşık 7 dakikada panele yansır.</p></div>
       <button class="btn primary" id="refreshNow"${S.data.publish ? '' : ' disabled'}>Şimdi güncelle</button></div><div id="refreshOut" class="small muted">${S.data.publish ? 'Bu düğme DDiamond, Lizay ve Sina verisini yeniler. Zen ve Atasay yalnızca kendi zamanlanmış taramalarıyla güncellenir.' : 'Bu düğme henüz kurulmadı: depoya UPLOAD_TOKEN erişim anahtarı eklenince etkinleşir.'}</div></div>
     <div class="tbl-wrap"><table><thead><tr><th>Marka</th><th>Durum</th><th class="r">Aktif ürün</th><th>Son başarılı güncelleme</th><th>Not</th></tr></thead><tbody>${Object.entries(S.data.brands).map(([b, i]) => `<tr><td>${chip(b)} ${esc(i.name)}</td><td><b>${i.status === 'ok' ? '✓' : '⚠'} ${ST[i.status] ?? i.status}</b></td><td class="r num">${i.count.toLocaleString('tr-TR')}</td><td>${i.lastOk ? dstr(i.lastOk) : '—'}</td><td class="small muted">${i.source === 'xml' ? 'Kaynak: yüklenen XML' : i.source === 'manual' || b === MANUAL ? 'Kaynak: yüklenen ürün sayfaları' : 'Kaynak: site taraması'}${i.error ? ' · ' + esc(i.error) : ''}</td></tr>`).join('')}</tbody></table></div>
     ${blocked.length ? `<div class="card"><h2>Engellenen siteler için ne yapılmalı?</h2><p>Bu siteler Cloudflare bot korumasıyla otomatik istekleri reddediyor. Koruma bilerek konulduğu için panel bunu aşmaya çalışmaz.</p><p>Günlük güncellemenin çalıştığı sunucunun IP'si engelliyse o markadan veri alınamaz; farklı bir çalıştırma ortamı veya izinli bir veri kaynağı gerekir. Eski veriler korunur.</p></div>` : ''}
@@ -463,7 +476,7 @@ const pages = {
         const { repo, token, branch } = S.data.publish;
         const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/gunluk-guncelleme.yml/dispatches`, { method: 'POST', headers: { authorization: 'Bearer ' + token, accept: 'application/vnd.github+json' }, body: JSON.stringify({ ref: branch }) });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        $('#refreshOut').innerHTML = '<b>✓ Güncelleme başlatıldı.</b> Yaklaşık 5 dakika sonra sayfayı yenileyin.'; rb.textContent = 'Başlatıldı';
+        $('#refreshOut').innerHTML = '<b>✓ Güncelleme başlatıldı.</b> Yaklaşık 7 dakika sonra sayfayı yenileyin.'; rb.textContent = 'Başlatıldı';
       } catch (e) { $('#refreshOut').innerHTML = `<span class="form-err">Güncelleme başlatılamadı (${esc(e.message)}). Erişim anahtarının "Actions: Read and write" yetkisi olduğunu kontrol edin.</span>`; rb.disabled = false; rb.textContent = 'Şimdi güncelle'; }
     };
     const mf = $('#manFile');
@@ -520,12 +533,11 @@ const pages = {
 let lastFocus = null;
 function openDrawer(title, html) {
   lastFocus = document.activeElement;
-  $('#drawerTitle').textContent = title; $('#drawerBody').innerHTML = html; $('#drawer').hidden = false;
-  $('#drawer [data-close].btn').focus();
+  $('#drawerTitle').textContent = title; $('#drawerBody').innerHTML = html; $('#drawerBody').scrollTop = 0;
+  openLayer($('#drawer'), { focus: $('#drawer .icon-btn'), onClose: () => { S.dchart?.destroy(); S.dchart = null; } });
 }
-function closeDrawer() { $('#drawer').hidden = true; S.dchart?.destroy(); S.dchart = null; lastFocus?.focus?.(); }
-$('#drawer').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeDrawer(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#drawer').hidden) closeDrawer(); if (e.key === 'Enter' && e.target.matches?.('.ev,tr.click,th.sort')) e.target.click(); });
+function closeDrawer() { closeLayer($('#drawer')); }
+document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.ev,tr.click,th.sort,.cmp-head')) { e.preventDefault(); e.target.click(); } });
 
 function openProduct(id) {
   const p = S.byId.get(id); if (!p) return;
@@ -592,7 +604,7 @@ function kiyasRows(cat, model, exact, limit = 400) {
 // Tüm görsellerle yazdırma görünümü: tarayıcının "PDF olarak kaydet" seçeneğiyle PDF alınır.
 function printKiyas(cat, model, exact) {
   const { mine, rows, truncated } = kiyasRows(cat, model, exact, 600);
-  const w = window.open('', '_blank'); if (!w) { alert('Açılır pencere engellendi. Bu site için açılır pencerelere izin verip tekrar deneyin.'); return; }
+  const w = window.open('', '_blank'); if (!w) { toast('Açılır pencere engellendi. Bu site için açılır pencerelere izin verip tekrar deneyin.', 'err'); return; }
   const today = S.data.runs.at(-1)?.date ?? '';
   const sp = (p) => `${p.ct.toLocaleString('tr-TR')} ct · ${esc(p.color ?? '—')} / ${esc(p.clarity ?? '—')}<br>${p.gram ? p.gram.toLocaleString('tr-TR') + ' gr' : 'Gram belirtilmemiş'}`;
   const im = (p) => `<img src="${esc(p.img ?? '')}" referrerpolicy="no-referrer" alt="">`;
@@ -688,24 +700,27 @@ async function report(kind, btn) {
 window.__report = report; // test kancası
 
 /* ---------- Yönlendirme ---------- */
-const TITLES = { kiyas: ['Model Kıyaslama', 'Aynı model ve karattaki rakip ürünlerle yan yana'], genel: ['Genel Bakış', 'Pazarın bugünkü görünümü'], bildirimler: ['Bildirimler', 'Rakip fiyat hareketleri'], karsilastirma: ['Segment Karşılaştırma', 'Ürün grubu bazında marka fiyatları'], urunler: ['Ürünler', 'Tüm markaların ürün kataloğu'], raporlar: ['Raporlar', 'PDF olarak indirilebilir analizler'], durum: ['Veri Durumu', 'Günlük güncellemelerin sağlığı'] };
+const TITLES = { kiyas: ['Model Kıyaslama', 'Aynı model ve karattaki rakip ürünlerle yan yana'], genel: ['Genel Bakış', 'Pazarın bugünkü görünümü'], bildirimler: ['Bildirimler', 'Rakip fiyat hareketleri'], karsilastirma: ['Segmentler', 'Ürün grubu bazında marka fiyatları'], urunler: ['Ürünler', 'Tüm markaların ürün kataloğu'], raporlar: ['Raporlar', 'PDF olarak indirilebilir analizler'], durum: ['Veri Durumu', 'Günlük güncellemelerin sağlığı'] };
+const ICONS = { genel: 'i-home', kiyas: 'i-compare', karsilastirma: 'i-layers', bildirimler: 'i-bell', urunler: 'i-gem', raporlar: 'i-doc', durum: 'i-pulse' };
 function badge() {
   const seen = localStorage.getItem('sp_seen') ?? '';
-  const n = S.data.events.filter((e) => e.date > seen && e.brand !== S.ref).length;
-  const el = $('#navBadge'); el.hidden = !n; el.textContent = n > 999 ? '999+' : n;
+  setBadge(S.data.events.filter((e) => e.date > seen && e.brand !== S.ref).length);
 }
-function route() {
+let lastRoute = null;
+function route(keepScroll) {
   if (!S.data) return;
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
   const name = pages[r] ? r : 'genel';
-  S.charts.forEach((c) => c.destroy()); S.charts = [];
-  document.querySelectorAll('#nav a').forEach((a) => a.classList.toggle('on', a.dataset.r === name));
+  const changed = name !== lastRoute; lastRoute = name;
+  updateNav(name);
   $('#pageTitle').textContent = TITLES[name][0];
   $('#pageSub').textContent = `${TITLES[name][1]} · son güncelleme ${S.data.runs.at(-1) ? dstr(S.data.runs.at(-1).date) : '—'}`;
-  badge(); banners();
-  pages[name]($('#view'));
+  document.title = `${TITLES[name][0]} · Fiyat Takip`;
+  badge(); banners(); themeCharts();
+  const render = () => { S.charts.forEach((c) => c.destroy()); S.charts = []; pages[name]($('#view')); };
+  if (changed) { swapView(render); if (keepScroll !== true) scrollTo(0, 0); } else render();
 }
-addEventListener('hashchange', () => { if (!$('#drawer').hidden) closeDrawer(); route(); });
+addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); route(); });
 
 (async () => {
   const s = JSON.parse(sessionStorage.getItem('sp_s') ?? 'null');

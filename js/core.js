@@ -50,7 +50,7 @@ export function classify(p) {
   const lab = dia.some((x) => /lab|sentetik/.test(norm(x.type))) || /lab(oratuvar)?\.? ?pırlanta|lab grown/.test(n);
   const noDia = !dia.length && !/pırlanta|elmas|diamond/.test(all);
   const gemG = COLORED.includes(gem) ? 'Renkli Taş' : gem ?? (lab ? 'Lab Pırlanta' : noDia ? 'Altın' : null);
-  return { cat, model, gem: gemG ?? 'Pırlanta', gemDetail, ct, bucket: bucketOf(ct), color: main?.color ?? null, clarity: main?.clarity ?? null, shape: main?.shape ?? null, erkek, cert, cut, centerCt, centerShare, designed };
+  return { cat, model, gem: gemG ?? 'Pırlanta', gemDetail, ct, bucket: bucketOf(ct), color: /^[D-N](\/[D-N])*$/i.test(String(main?.color ?? '').replace(/[\s-]+/g, '/')) ? main.color : null, clarity: main?.clarity ?? null, shape: main?.shape ?? null, erkek, cert, cut, centerCt, centerShare, designed };
 }
 
 export const segKey = (p) => [p.cat, p.model, p.gem, p.bucket, p.ayar ?? 0, p.cert ?? ''].join('|');
