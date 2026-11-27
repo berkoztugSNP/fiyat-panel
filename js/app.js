@@ -2,6 +2,7 @@ import { buildSegments, equivalents, versusRef, median, bucketLabel, CT_BUCKETS,
 import { parseMerchantFeed } from './feed.js';
 import { parseSavedPage } from './parse.js';
 import { initShell, toast, openLayer, closeLayer, updateNav, setBadge, swapView, cssv, isDark } from './ui.js';
+import * as YON from './yonetim/app.js';
 const MANUAL = 'blue'; // ürünleri kayıtlı sayfalardan elle yüklenen marka
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -93,11 +94,13 @@ async function start(s) {
   $('#login').hidden = true; $('#app').hidden = false;
   initShell({
     logout, onTheme: () => { if (S.data) route(true); },
-    pages: Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })),
+    pages: [...Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })), ...Object.entries(YON.TITLES).map(([id, t]) => ({ id: 'y/' + id, title: 'Yönetim · ' + t[0], icon: 'i-wallet' }))],
     searchProducts: (q) => { const ws = q.split(' ').filter(Boolean); return S.products.filter((p) => ws.every((w) => (p._n ??= norm(p.name + ' ' + p.code)).includes(norm(w)))).slice(0, 8).map((p) => ({ id: p.id, title: p.name, meta: `${brand(p.brand).short} · ${tl(p.price)}`, thumb: img(p, 'thumb') })); },
     openProduct: (id) => openProduct(id),
   });
   $('#alertBtn').onclick = openAlerts; alertBadge();
+  // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
+  await YON.init({ user: s.user, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
   banners(); route();
 }
 
@@ -560,6 +563,7 @@ const pages = {
 let lastFocus = null;
 function openDrawer(title, html) {
   lastFocus = document.activeElement;
+  document.querySelector('#yFoot')?.remove();
   $('#drawerTitle').textContent = title; $('#drawerBody').innerHTML = html; $('#drawerBody').scrollTop = 0;
   openLayer($('#drawer'), { focus: $('#drawer .icon-btn'), onClose: () => { S.dchart?.destroy(); S.dchart = null; } });
 }
@@ -737,6 +741,11 @@ let lastRoute = null;
 function route(keepScroll) {
   if (!S.data) return;
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
+  const isY = r === 'y' || r.startsWith('y/');
+  document.documentElement.dataset.app = isY ? 'y' : 'f';
+  document.querySelectorAll('.app-switch [data-app]').forEach((a) => { const on = a.dataset.app === (isY ? 'y' : 'f'); a.classList.toggle('on', on); a.setAttribute('aria-selected', on); });
+  if (isY) { lastRoute = null; YON.route(r.slice(2) || 'genel'); return; }
+  document.querySelector('#yFoot')?.remove();
   const name = pages[r] ? r : 'genel';
   const changed = name !== lastRoute; lastRoute = name;
   updateNav(name);
@@ -747,7 +756,7 @@ function route(keepScroll) {
   const render = () => { S.charts.forEach((c) => c.destroy()); S.charts = []; pages[name]($('#view')); };
   if (changed) { swapView(render); if (keepScroll !== true) scrollTo(0, 0); } else render();
 }
-addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); closeLayer($('#alerts')); route(); });
+addEventListener('hashchange', () => { closeDrawer(); closeLayer($('#more')); closeLayer($('#moreY')); closeLayer($('#alerts')); route(); });
 
 (async () => {
   const s = JSON.parse(sessionStorage.getItem('sp_s') ?? 'null');

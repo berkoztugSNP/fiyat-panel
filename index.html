@@ -37,6 +37,12 @@
   <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4.5H6.5v15H14M10.5 12h10M17 8.5l3.5 3.5-3.5 3.5"/></symbol>
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18zM12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8.5h14l-1 12H6zM8.5 8.5V7a3.5 3.5 0 0 1 7 0v1.5"/></symbol>
+  <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3.5 17 9 11.5l4 4L20.5 8M15 8h5.5v5.5"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="M4 10v4l3 .5V9.5zM7 9.5 18.5 5v14L7 14.5M9 15l1 4.5h2.5L11.5 16"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3M4 7.5V17a2.5 2.5 0 0 0 2.5 2.5H20V8H6.5A2.5 2.5 0 0 1 4 7.5zM16 13.5h1"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M18 6l-1.6 1.6M7.6 16.4 6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
   <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5.5 6.5 6.5L9 18.5"/></symbol>
 </defs></svg>
@@ -64,6 +70,23 @@
       <button class="icon-btn" id="sideToggle" aria-label="Kenar çubuğunu daralt veya genişlet" data-tip="Kenar çubuğu  ⌘B"><svg class="ic"><use href="#i-side"/></svg></button>
     </div>
     <button class="search-btn" id="paletteBtn" aria-label="Ara veya sayfaya git"><svg class="ic"><use href="#i-search"/></svg><span>Ara</span><kbd>⌘K</kbd></button>
+    <div class="seg app-switch" role="tablist" aria-label="Uygulama">
+      <a href="#/genel" role="tab" data-app="f">Fiyat Takip</a>
+      <a href="#/y/genel" role="tab" data-app="y">Yönetim</a>
+    </div>
+    <nav id="navY" class="nav" aria-label="Yönetim menüsü">
+      <div class="nav-label">Genel</div>
+      <a href="#/y/genel" data-y="genel"><svg class="ic"><use href="#i-home"/></svg><span>Genel Bakış</span></a>
+      <div class="nav-label">E-Ticaret</div>
+      <a href="#/y/siparisler" data-y="siparisler"><svg class="ic"><use href="#i-bag"/></svg><span>Siparişler</span><b id="costBadge" class="badge" hidden></b></a>
+      <a href="#/y/karlilik" data-y="karlilik"><svg class="ic"><use href="#i-trend"/></svg><span>Kârlılık Analizi</span></a>
+      <div class="nav-label">Pazarlama</div>
+      <a href="#/y/reklam" data-y="reklam"><svg class="ic"><use href="#i-mega"/></svg><span>Reklam Harcamaları</span></a>
+      <div class="nav-label">Finans</div>
+      <a href="#/y/giderler" data-y="giderler"><svg class="ic"><use href="#i-wallet"/></svg><span>Gelir ve Giderler</span></a>
+      <div class="nav-label">Diğer</div>
+      <a href="#/y/ayarlar" data-y="ayarlar"><svg class="ic"><use href="#i-gear"/></svg><span>Ayarlar</span></a>
+    </nav>
     <nav id="nav" class="nav" aria-label="Ana menü">
       <div class="nav-label">Analiz</div>
       <a href="#/genel" data-r="genel"><svg class="ic"><use href="#i-home"/></svg><span>Genel Bakış</span></a>
@@ -110,6 +133,27 @@
   </nav>
 </div>
 
+<nav class="tabbar" id="tabbarY" aria-label="Yönetim alt menüsü">
+  <span class="tab-ind" aria-hidden="true"></span>
+  <a href="#/y/genel" data-y="genel"><svg class="ic"><use href="#i-home"/></svg><span>Genel</span></a>
+  <a href="#/y/siparisler" data-y="siparisler"><svg class="ic"><use href="#i-bag"/></svg><span>Sipariş</span></a>
+  <a href="#/y/reklam" data-y="reklam"><svg class="ic"><use href="#i-mega"/></svg><span>Reklam</span></a>
+  <a href="#/y/giderler" data-y="giderler"><svg class="ic"><use href="#i-wallet"/></svg><span>Gider</span></a>
+  <button id="moreBtnY" data-y="more" aria-haspopup="dialog"><svg class="ic"><use href="#i-more"/></svg><span>Diğer</span></button>
+</nav>
+
+<div id="moreY" class="sheet-root menu" hidden role="dialog" aria-modal="true" aria-label="Diğer">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="grab" aria-hidden="true"></div>
+    <div class="menu-list">
+      <a href="#/y/karlilik" data-close><svg class="ic"><use href="#i-trend"/></svg><span>Kârlılık Analizi</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
+      <a href="#/y/ayarlar" data-close><svg class="ic"><use href="#i-gear"/></svg><span>Ayarlar</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
+    </div>
+    <div class="menu-list"><a href="#/genel" data-close><svg class="ic"><use href="#i-compare"/></svg><span>Fiyat Takip'e geç</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
+  </div>
+</div>
+
 <!-- Detay paneli: masaüstünde yan panel, mobilde alttan açılan sayfa -->
 <div id="drawer" class="sheet-root" hidden role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
   <div class="scrim" data-close></div>
@@ -140,6 +184,7 @@
       <a href="#/raporlar" data-close><svg class="ic"><use href="#i-doc"/></svg><span>Raporlar</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
       <a href="#/durum" data-close><svg class="ic"><use href="#i-pulse"/></svg><span>Veri Durumu</span><svg class="ic chev"><use href="#i-chev"/></svg></a>
     </div>
+    <div class="menu-list"><a href="#/y/genel" data-close><svg class="ic"><use href="#i-wallet"/></svg><span>Yönetim Paneli'ne geç</span><svg class="ic chev"><use href="#i-chev"/></svg></a></div>
     <div class="menu-list">
       <button id="themeBtnM"><svg class="ic"><use href="#i-theme"/></svg><span>Tema</span><em id="themeLblM">Sistem</em></button>
       <button id="logoutM" class="danger"><svg class="ic"><use href="#i-out"/></svg><span>Çıkış yap</span></button>
