@@ -3,6 +3,7 @@ import { parseMerchantFeed } from './feed.js';
 import { parseSavedPage } from './parse.js';
 import { initShell, toast, openLayer, closeLayer, updateNav, setBadge, swapView, cssv, isDark } from './ui.js';
 import * as YON from './yonetim/app.js';
+import * as MH from './mh/app.js';
 const MANUAL = 'blue'; // ürünleri kayıtlı sayfalardan elle yüklenen marka
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -31,14 +32,17 @@ async function unlock(user, pass) {
   const kek = await crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: b64d(rec.salt), iterations: uj.iter }, base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
   let raw;
   try { raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(rec.iv), additionalData: new TextEncoder().encode(u) }, kek, b64d(rec.wk)); } catch { throw new Error('auth'); }
-  return { key: btoa(String.fromCharCode(...new Uint8Array(raw))), v: uj.v, user: u };
+  const rk = {}; // bölüm anahtarları: kullanıcı yalnızca yetkili olduğu bölümleri çözebilir
+  for (const [r, w] of Object.entries(rec.rk ?? {})) { try { rk[r] = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64d(w.iv), additionalData: new TextEncoder().encode(u) }, kek, b64d(w.wk))))); } catch {} }
+  return { key: btoa(String.fromCharCode(...new Uint8Array(raw))), rk, v: uj.v, user: u };
 }
-async function loadData(keyB64) {
-  const buf = new Uint8Array(await (await fetch('data.enc?_=' + Date.now(), { cache: 'no-store' })).arrayBuffer());
-  const key = await crypto.subtle.importKey('raw', b64d(keyB64), 'AES-GCM', false, ['decrypt']);
-  const gz = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12));
-  const txt = await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
-  return JSON.parse(txt);
+const openBlob = async (keyB64, buf) => { const key = await crypto.subtle.importKey('raw', b64d(keyB64), 'AES-GCM', false, ['decrypt']); const gz = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)); return JSON.parse(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream('gzip'))).text()); };
+async function loadData(keyB64, rk = {}) {
+  const data = await openBlob(keyB64, new Uint8Array(await (await fetch('data.enc?_=' + Date.now(), { cache: 'no-store' })).arrayBuffer()));
+  data.roles = data.sec ? [] : ['yonetim', 'mh']; // eski biçimli veri paketinde bölüm ayrımı yoktu
+  for (const [r, blob] of Object.entries(data.sec ?? {})) { if (!rk[r]) continue; try { data[r] = await openBlob(rk[r], b64d(blob)); data.roles.push(r); } catch {} }
+  delete data.sec;
+  return data;
 }
 function showLogin(msg) {
   $('#app').hidden = true; $('#login').hidden = false;
@@ -64,7 +68,7 @@ const logout = () => { sessionStorage.removeItem('sp_s'); location.hash = ''; lo
 $('#logout').addEventListener('click', logout);
 
 async function start(s) {
-  S.data = await loadData(s.key);
+  S.data = await loadData(s.key, s.rk);
   S.user = s.user;
   S.localFeed = null;
   try {
@@ -97,7 +101,7 @@ async function start(s) {
   $('#login').hidden = true; $('#app').hidden = false;
   initShell({
     logout, onTheme: () => { if (S.data) route(true); },
-    pages: [...Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })), ...Object.entries(YON.TITLES).map(([id, t]) => ({ id: 'y/' + id, title: 'Yönetim · ' + t[0], icon: 'i-wallet' }))],
+    pages: [...Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })), ...(can('y') ? Object.entries(YON.TITLES).map(([id, t]) => ({ id: 'y/' + id, title: 'Yönetim · ' + t[0], icon: 'i-wallet' })) : []), ...(can('m') ? Object.entries(MH.TITLES).map(([id, t]) => ({ id: 'm/' + id, title: 'Müşteri Hizmetleri · ' + t[0], icon: 'i-chat' })) : [])],
     searchProducts: (q) => { const ws = q.split(' ').filter(Boolean); return S.products.filter((p) => ws.every((w) => (p._n ??= norm(p.name + ' ' + p.code)).includes(norm(w)))).slice(0, 8).map((p) => ({ id: p.id, title: p.name, meta: `${brand(p.brand).short} · ${tl(p.price)}`, thumb: img(p, 'thumb') })); },
     openProduct: (id) => openProduct(id),
   });
@@ -105,6 +109,7 @@ async function start(s) {
   bindLogoHold();
   // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
   await YON.init({ user: s.user, data: S.data.yonetim, publish: S.data.publish, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
+  if (can('m')) await MH.init({ user: s.user, config: S.data.mh, toast, openDrawer, closeDrawer });
   banners(); route();
 }
 
@@ -747,18 +752,21 @@ function badge() {
   setBadge(S.data.events.filter((e) => e.date > seen && e.brand !== S.ref).length);
 }
 // Mobil başlıktaki logo: dokununca ya da basılı tutunca ekran değiştirici açılır; seçim animasyonla geçer
+// Bölümler: Fiyat Takip herkese açık; diğerleri kullanıcının yetkisine bağlı
+const APPS = { f: { name: 'Fiyat Takip', hash: '#/genel', go: "Fiyat Takip'e Dön", icon: 'i-compare' }, y: { name: 'Yönetim Paneli', hash: '#/y/genel', role: 'yonetim', go: 'Yönetim Paneline Giriş', icon: 'i-wallet' }, m: { name: 'Müşteri Hizmetleri', hash: '#/m/kayitlar', role: 'mh', go: 'Müşteri Hizmetlerine Giriş', icon: 'i-chat' } };
+const can = (a) => !!APPS[a] && (!APPS[a].role || (S.data?.roles ?? []).includes(APPS[a].role));
 function bindLogoHold() {
   const el = $('#logoHold'), ov = $('#appShift'), sw = $('#appSw'); if (!el || el.dataset.bound) return; el.dataset.bound = 1;
-  const isY = () => document.documentElement.dataset.app === 'y';
-  const mark = () => { el.setAttribute('aria-label', `Sina Pırlanta, ${isY() ? 'Yönetim Paneli' : 'Fiyat Takip'}. Ekran değiştir`); sw.querySelectorAll('[data-sw]').forEach((b) => { const on = (b.dataset.sw === 'y') === isY(); b.classList.toggle('on', on); b.setAttribute('aria-current', on); }); };
+  const cur = () => document.documentElement.dataset.app || 'f';
+  const mark = () => { el.setAttribute('aria-label', `Sina Pırlanta, ${APPS[cur()].name}. Ekran değiştir`); sw.querySelectorAll('[data-sw]').forEach((b) => { const on = b.dataset.sw === cur(); b.hidden = !can(b.dataset.sw); b.classList.toggle('on', on); b.setAttribute('aria-current', on); }); el.querySelector('.dn').style.display = Object.keys(APPS).filter(can).length > 1 ? '' : 'none'; };
   let timer = null, held = false, busy = false; mark(); addEventListener('hashchange', mark);
-  const open = () => { mark(); openLayer(sw); };
-  const go = (toY) => {
+  const open = () => { mark(); if (Object.keys(APPS).filter(can).length > 1) openLayer(sw); };
+  const go = (to) => {
     if (busy) return; busy = true; const r = el.getBoundingClientRect();
     ov.style.setProperty('--cx', r.left + r.width / 2 + 'px'); ov.style.setProperty('--cy', r.top + r.height / 2 + 'px');
-    $('#appShiftLbl').textContent = toY ? 'Yönetim Paneli' : 'Fiyat Takip'; ov.className = 'app-shift ' + (toY ? 'to-y' : 'to-f'); ov.hidden = false; void ov.offsetWidth; ov.classList.add('run');
+    $('#appShiftLbl').textContent = APPS[to].name; ov.className = 'app-shift ' + (to === 'f' ? 'to-f' : 'to-y'); ov.hidden = false; void ov.offsetWidth; ov.classList.add('run');
     const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
-    setTimeout(() => { location.hash = toY ? '#/y/genel' : '#/genel'; }, reduce ? 250 : 560);
+    setTimeout(() => { location.hash = APPS[to].hash; }, reduce ? 250 : 560);
     setTimeout(() => { ov.hidden = true; ov.classList.remove('run'); busy = false; }, reduce ? 620 : 1280);
   };
   // Basılı tutarak açıldığında parmak kalkınca oluşan tıklama arka plana (karartmaya) düşüp pencereyi kapatmasın
@@ -768,17 +776,20 @@ function bindLogoHold() {
   for (const ev of ['pointerup', 'pointercancel']) el.addEventListener(ev, stop);   // parmak hafif kaysa da basılı tutma iptal olmaz (touch-action:none)
   el.addEventListener('click', () => { if (held) { held = false; return; } open(); });   // kısa dokunuş da aynı seçenekleri açar
   el.addEventListener('contextmenu', (e) => e.preventDefault());
-  sw.addEventListener('click', (e) => { const b = e.target.closest('[data-sw]'); if (!b) return; closeLayer(sw); const toY = b.dataset.sw === 'y'; if (toY !== isY()) setTimeout(() => go(toY), 180); });
+  sw.addEventListener('click', (e) => { const b = e.target.closest('[data-sw]'); if (!b) return; closeLayer(sw); const to = b.dataset.sw; if (to !== cur() && can(to)) setTimeout(() => go(to), 180); });
 }
 let lastRoute = null;
 function route(keepScroll) {
   if (!S.data) return;
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
-  const isY = r === 'y' || r.startsWith('y/');
-  document.documentElement.dataset.app = isY ? 'y' : 'f';
-  
-  if (isY) { lastRoute = null; YON.route(r.slice(2) || 'genel'); return; }
+  const app = r === 'y' || r.startsWith('y/') ? 'y' : r === 'm' || r.startsWith('m/') ? 'm' : 'f';
+  if (!can(app)) { location.hash = '#/genel'; return; }   // yetkisi olmayan bölüm açılmaz
+  document.documentElement.dataset.app = app;
+  $('#appGo').innerHTML = Object.keys(APPS).filter((a) => a !== app && can(a)).map((a) => a === 'f' ? `<a class="app-go to-f" href="${APPS[a].hash}"><svg class="ic chev back"><use href="#i-chev"/></svg><span>${APPS[a].go}</span></a>` : `<a class="app-go to-y" href="${APPS[a].hash}"><svg class="ic"><use href="#${APPS[a].icon}"/></svg><span>${APPS[a].go}</span><svg class="ic chev"><use href="#i-chev"/></svg></a>`).join('');
   document.querySelector('#yFoot')?.remove();
+  if (app !== 'm') MH.leave();
+  if (app === 'y') { lastRoute = null; YON.route(r.slice(2) || 'genel'); return; }
+  if (app === 'm') { lastRoute = null; S.charts.forEach((c) => c.destroy()); S.charts = []; MH.route(r.slice(2) || 'kayitlar'); return; }
   const name = pages[r] ? r : 'genel';
   const changed = name !== lastRoute; lastRoute = name;
   updateNav(name);
