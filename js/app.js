@@ -110,6 +110,7 @@ async function start(s) {
   // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
   await YON.init({ user: s.user, data: S.data.yonetim, publish: S.data.publish, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
   if (can('m')) await MH.init({ user: s.user, config: S.data.mh, toast, openDrawer, closeDrawer });
+  S.ready = true; // bölümler hazır olmadan (ör. açılış sırasında adres değişirse) sayfa çizilmez
   banners(); route();
 }
 
@@ -780,7 +781,7 @@ function bindLogoHold() {
 }
 let lastRoute = null;
 function route(keepScroll) {
-  if (!S.data) return;
+  if (!S.data || !S.ready) return;
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
   const app = r === 'y' || r.startsWith('y/') ? 'y' : r === 'm' || r.startsWith('m/') ? 'm' : 'f';
   if (!can(app)) { location.hash = '#/genel'; return; }   // yetkisi olmayan bölüm açılmaz
