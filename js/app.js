@@ -4,6 +4,7 @@ import { parseSavedPage } from './parse.js';
 import { initShell, toast, openLayer, closeLayer, updateNav, setBadge, swapView, cssv, isDark } from './ui.js';
 import * as YON from './yonetim/app.js';
 import * as MH from './mh/app.js';
+import * as PZ from './pazar/app.js';
 const MANUAL = 'blue'; // ürünleri kayıtlı sayfalardan elle yüklenen marka
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -101,7 +102,7 @@ async function start(s) {
   $('#login').hidden = true; $('#app').hidden = false;
   initShell({
     logout, onTheme: () => { if (S.data) route(true); },
-    pages: [...Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })), ...(can('y') ? Object.entries(YON.TITLES).map(([id, t]) => ({ id: 'y/' + id, title: 'Yönetim · ' + t[0], icon: 'i-wallet' })) : []), ...(can('m') ? Object.entries(MH.TITLES).map(([id, t]) => ({ id: 'm/' + id, title: 'Müşteri Hizmetleri · ' + t[0], icon: 'i-chat' })) : [])],
+    pages: [...Object.entries(TITLES).map(([id, t]) => ({ id, title: t[0], icon: ICONS[id] })), ...(can('y') ? Object.entries(YON.TITLES).map(([id, t]) => ({ id: 'y/' + id, title: 'Yönetim · ' + t[0], icon: 'i-wallet' })) : []), ...(can('p') ? Object.entries(PZ.TITLES).filter(([id]) => id !== 'menu').map(([id, t]) => ({ id: 'p/' + id, title: 'Pazarlama · ' + t[0], icon: 'i-mega' })) : []), ...(can('m') ? Object.entries(MH.TITLES).map(([id, t]) => ({ id: 'm/' + id, title: 'Müşteri Hizmetleri · ' + t[0], icon: 'i-chat' })) : [])],
     searchProducts: (q) => { const ws = q.split(' ').filter(Boolean); return S.products.filter((p) => ws.every((w) => (p._n ??= norm(p.name + ' ' + p.code)).includes(norm(w)))).slice(0, 8).map((p) => ({ id: p.id, title: p.name, meta: `${brand(p.brand).short} · ${tl(p.price)}`, thumb: img(p, 'thumb') })); },
     openProduct: (id) => openProduct(id),
   });
@@ -110,6 +111,7 @@ async function start(s) {
   // Yönetim Paneli: aynı kabuğu kullanır, verisi ayrı tutulur
   await YON.init({ user: s.user, data: S.data.yonetim, publish: S.data.publish, toast, openLayer, cssv, openDrawer, closeDrawer, chart, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); }, afterImport: () => YON.route(location.hash.replace(/^#\/y\/?/, '')) });
   if (can('m')) await MH.init({ user: s.user, config: S.data.mh, toast, openDrawer, closeDrawer });
+  if (can('p')) PZ.init({ user: s.user, data: S.data.pazar, generatedAt: S.data.generatedAt, publish: S.data.publish, toast, openDrawer, closeDrawer, chart, cssv, resetCharts: () => { S.charts.forEach((c) => c.destroy()); S.charts = []; themeCharts(); } });
   S.ready = true; // bölümler hazır olmadan (ör. açılış sırasında adres değişirse) sayfa çizilmez
   banners(); route();
 }
@@ -754,7 +756,7 @@ function badge() {
 }
 // Mobil başlıktaki logo: dokununca ya da basılı tutunca ekran değiştirici açılır; seçim animasyonla geçer
 // Bölümler: Fiyat Takip herkese açık; diğerleri kullanıcının yetkisine bağlı
-const APPS = { f: { name: 'Fiyat Takip', hash: '#/genel', go: "Fiyat Takip'e Dön", icon: 'i-compare' }, y: { name: 'Yönetim Paneli', hash: '#/y/genel', role: 'yonetim', go: 'Yönetim Paneline Giriş', icon: 'i-wallet' }, m: { name: 'Müşteri Hizmetleri', hash: '#/m/kayitlar', role: 'mh', go: 'Müşteri Hizmetlerine Giriş', icon: 'i-chat' } };
+const APPS = { f: { name: 'Fiyat Takip', hash: '#/genel', go: "Fiyat Takip'e Dön", icon: 'i-compare' }, y: { name: 'Yönetim Paneli', hash: '#/y/genel', role: 'yonetim', go: 'Yönetim Paneline Giriş', icon: 'i-wallet' }, m: { name: 'Müşteri Hizmetleri', hash: '#/m/kayitlar', role: 'mh', go: 'Müşteri Hizmetlerine Giriş', icon: 'i-chat' }, p: { name: 'Pazarlama İstihbaratı', hash: '#/p/genel', role: 'pazar', go: 'Pazarlama İstihbaratına Giriş', icon: 'i-mega' } };
 const can = (a) => !!APPS[a] && (!APPS[a].role || (S.data?.roles ?? []).includes(APPS[a].role));
 function bindLogoHold() {
   const el = $('#logoHold'), ov = $('#appShift'), sw = $('#appSw'); if (!el || el.dataset.bound) return; el.dataset.bound = 1;
@@ -783,12 +785,14 @@ let lastRoute = null;
 function route(keepScroll) {
   if (!S.data || !S.ready) return;
   const r = (location.hash.replace(/^#\//, '') || 'genel').split('?')[0];
-  const app = r === 'y' || r.startsWith('y/') ? 'y' : r === 'm' || r.startsWith('m/') ? 'm' : 'f';
+  const app = r === 'y' || r.startsWith('y/') ? 'y' : r === 'm' || r.startsWith('m/') ? 'm' : r === 'p' || r.startsWith('p/') ? 'p' : 'f';
   if (!can(app)) { location.hash = '#/genel'; return; }   // yetkisi olmayan bölüm açılmaz
   document.documentElement.dataset.app = app;
   $('#appGo').innerHTML = Object.keys(APPS).filter((a) => a !== app && can(a)).map((a) => a === 'f' ? `<a class="app-go to-f" href="${APPS[a].hash}"><svg class="ic chev back"><use href="#i-chev"/></svg><span>${APPS[a].go}</span></a>` : `<a class="app-go to-y" href="${APPS[a].hash}"><svg class="ic"><use href="#${APPS[a].icon}"/></svg><span>${APPS[a].go}</span><svg class="ic chev"><use href="#i-chev"/></svg></a>`).join('');
   document.querySelector('#yFoot')?.remove();
   if (app !== 'm') MH.leave();
+  if (app !== 'p') PZ.leave();
+  if (app === 'p') { lastRoute = null; PZ.route(r.slice(2) || 'genel'); return; }
   if (app === 'y') { lastRoute = null; YON.route(r.slice(2) || 'genel'); return; }
   if (app === 'm') { lastRoute = null; S.charts.forEach((c) => c.destroy()); S.charts = []; MH.route(r.slice(2) || 'kayitlar'); return; }
   const name = pages[r] ? r : 'genel';
